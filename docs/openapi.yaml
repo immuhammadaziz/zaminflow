@@ -1,0 +1,1804 @@
+openapi: 3.0.3
+info:
+  title: ZaminFlow API
+  version: 0.1.0-draft
+  description: Draft contract for product approval. Not an implemented API.
+servers:
+  - url: https://api.zaminflow.uz/api/v1
+    description: Proposed production URL
+  - url: http://localhost:8080/api/v1
+    description: Local development
+tags:
+  - name: Meta
+  - name: Auth
+  - name: Profile
+  - name: Admin
+  - name: Listings
+  - name: Orders
+  - name: Dashboards
+  - name: Health
+paths:
+  /meta/roles:
+    get:
+      tags: [Meta]
+      operationId: listSignupRoles
+      summary: List roles selectable at sign-up
+      responses:
+        '200':
+          description: Farmer and processor roles only
+          content:
+            application/json:
+              schema:
+                type: object
+                required: [items]
+                properties:
+                  items:
+                    type: array
+                    items:
+                      $ref: '#/components/schemas/RoleOption'
+        '429':
+          $ref: '#/components/responses/RateLimited'
+  /meta/regions:
+    get:
+      tags: [Meta]
+      operationId: listRegions
+      summary: List Uzbekistan regions
+      parameters:
+        - $ref: '#/components/parameters/Page'
+        - $ref: '#/components/parameters/PageSize'
+      responses:
+        '200':
+          description: Region references
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/PaginatedRegions'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+  /auth/sign-up:
+    post:
+      tags: [Auth]
+      operationId: signUp
+      summary: Register a pending farmer or processor
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/SignUpRequest'
+      responses:
+        '201':
+          description: Pending account created
+          content:
+            application/json:
+              schema:
+                type: object
+                required: [user, message]
+                properties:
+                  user:
+                    $ref: '#/components/schemas/User'
+                  message:
+                    type: string
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '409':
+          $ref: '#/components/responses/Conflict'
+        '422':
+          $ref: '#/components/responses/ValidationError'
+        '429':
+          $ref: '#/components/responses/RateLimited'
+  /auth/sign-in:
+    post:
+      tags: [Auth]
+      operationId: signIn
+      summary: Sign in; admin users must provide TOTP or a recovery code
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/SignInRequest'
+      responses:
+        '200':
+          description: Access token and user; refresh cookie is set
+          headers:
+            Set-Cookie:
+              schema:
+                type: string
+              description: HttpOnly; Secure in production; SameSite=Lax; scoped to auth path.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/AuthResponse'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '422':
+          $ref: '#/components/responses/ValidationError'
+        '429':
+          $ref: '#/components/responses/RateLimited'
+  /auth/email-verification/request:
+    post:
+      tags: [Auth]
+      operationId: requestEmailVerification
+      summary: Request an enumeration-safe verification email
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/EmailRequest'
+      responses:
+        '202':
+          description: Request accepted whether or not the account exists
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '422':
+          $ref: '#/components/responses/ValidationError'
+        '429':
+          $ref: '#/components/responses/RateLimited'
+  /auth/email-verification/confirm:
+    post:
+      tags: [Auth]
+      operationId: confirmEmailVerification
+      summary: Verify email with a one-time token
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/TokenRequest'
+      responses:
+        '200':
+          description: Email verified
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '409':
+          $ref: '#/components/responses/Conflict'
+        '422':
+          $ref: '#/components/responses/ValidationError'
+  /auth/password-reset/request:
+    post:
+      tags: [Auth]
+      operationId: requestPasswordReset
+      summary: Request password reset without disclosing account existence
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/EmailRequest'
+      responses:
+        '202':
+          description: Request accepted
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '422':
+          $ref: '#/components/responses/ValidationError'
+        '429':
+          $ref: '#/components/responses/RateLimited'
+  /auth/password-reset/confirm:
+    post:
+      tags: [Auth]
+      operationId: confirmPasswordReset
+      summary: Consume password reset token and revoke existing sessions
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/PasswordResetRequest'
+      responses:
+        '204':
+          description: Password changed
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '409':
+          $ref: '#/components/responses/Conflict'
+        '422':
+          $ref: '#/components/responses/ValidationError'
+        '429':
+          $ref: '#/components/responses/RateLimited'
+  /auth/refresh:
+    post:
+      tags: [Auth]
+      operationId: refreshSession
+      summary: Rotate the refresh token and issue an access token
+      security:
+        - refreshCookie: []
+      responses:
+        '200':
+          description: Refreshed session and rotated cookie
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/AuthResponse'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '409':
+          $ref: '#/components/responses/Conflict'
+        '429':
+          $ref: '#/components/responses/RateLimited'
+  /auth/sessions:
+    get:
+      tags: [Auth]
+      operationId: listSessions
+      summary: List the current user's sessions
+      security:
+        - bearerAuth: []
+      parameters:
+        - $ref: '#/components/parameters/Page'
+        - $ref: '#/components/parameters/PageSize'
+      responses:
+        '200':
+          description: Paginated sessions owned by the caller
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/PaginatedSessions'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+  /auth/sessions/{sessionId}:
+    parameters:
+      - name: sessionId
+        in: path
+        required: true
+        schema:
+          type: string
+          format: uuid
+    delete:
+      tags: [Auth]
+      operationId: revokeSession
+      summary: Revoke one session owned by the caller
+      security:
+        - bearerAuth: []
+      responses:
+        '204':
+          description: Session revoked
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '404':
+          $ref: '#/components/responses/NotFound'
+  /auth/change-password:
+    post:
+      tags: [Auth]
+      operationId: changePassword
+      summary: Change password and revoke other sessions
+      security:
+        - bearerAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/ChangePasswordRequest'
+      responses:
+        '204':
+          description: Password changed
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '422':
+          $ref: '#/components/responses/ValidationError'
+        '429':
+          $ref: '#/components/responses/RateLimited'
+  /auth/totp/setup:
+    post:
+      tags: [Auth]
+      operationId: setupAdminTotp
+      summary: Begin mandatory admin TOTP enrollment
+      security:
+        - bearerAuth: []
+      x-allowed-roles: [admin]
+      description: May be called by an enrollment-only session created after the first CLI-provisioned admin sign-in.
+      responses:
+        '200':
+          description: Secret shown once for authenticator enrollment
+          content:
+            application/json:
+              schema:
+                type: object
+                required: [secret, otpauthUri]
+                properties:
+                  secret:
+                    type: string
+                  otpauthUri:
+                    type: string
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '409':
+          $ref: '#/components/responses/Conflict'
+  /auth/totp/confirm:
+    post:
+      tags: [Auth]
+      operationId: confirmAdminTotp
+      summary: Confirm admin TOTP and issue recovery codes
+      security:
+        - bearerAuth: []
+      x-allowed-roles: [admin]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/TotpCodeRequest'
+      responses:
+        '200':
+          description: Recovery codes shown once
+          content:
+            application/json:
+              schema:
+                type: object
+                required: [recoveryCodes]
+                properties:
+                  recoveryCodes:
+                    type: array
+                    items:
+                      type: string
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '422':
+          $ref: '#/components/responses/ValidationError'
+        '429':
+          $ref: '#/components/responses/RateLimited'
+  /auth/totp/recovery-codes/rotate:
+    post:
+      tags: [Auth]
+      operationId: rotateAdminRecoveryCodes
+      summary: Rotate one-time admin recovery codes
+      security:
+        - bearerAuth: []
+      x-allowed-roles: [admin]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/TotpCodeRequest'
+      responses:
+        '200':
+          description: New recovery codes shown once
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '422':
+          $ref: '#/components/responses/ValidationError'
+        '429':
+          $ref: '#/components/responses/RateLimited'
+  /auth/sign-out:
+    post:
+      tags: [Auth]
+      operationId: signOut
+      summary: Revoke current refresh-token family
+      security:
+        - bearerAuth: []
+      responses:
+        '204':
+          description: Session revoked
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+  /me/resubmit:
+    post:
+      tags: [Profile]
+      operationId: resubmitAccount
+      summary: Resubmit corrected rejected account for review
+      security:
+        - bearerAuth: []
+      x-allowed-roles: [farmer, processor]
+      x-required-account-status: rejected
+      requestBody:
+        content:
+          application/json:
+            schema:
+              type: object
+              additionalProperties: false
+      responses:
+        '202':
+          description: Account returned to pending and review attempt recorded
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '409':
+          $ref: '#/components/responses/Conflict'
+  /me:
+    get:
+      tags: [Profile]
+      operationId: getMe
+      summary: Get the current user and live account status
+      security:
+        - bearerAuth: []
+      responses:
+        '200':
+          description: Current user
+          content:
+            application/json:
+              schema:
+                type: object
+                required: [user]
+                properties:
+                  user:
+                    $ref: '#/components/schemas/User'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+    patch:
+      tags: [Profile]
+      operationId: updateMe
+      summary: Update allowed fields on the current user's profile
+      security:
+        - bearerAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/ProfileUpdate'
+      responses:
+        '200':
+          description: Updated profile
+          content:
+            application/json:
+              schema:
+                type: object
+                required: [user]
+                properties:
+                  user:
+                    $ref: '#/components/schemas/User'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '422':
+          $ref: '#/components/responses/ValidationError'
+    delete:
+      tags: [Profile]
+      operationId: requestAccountDeletion
+      summary: Request account deletion subject to retention rules
+      security:
+        - bearerAuth: []
+      responses:
+        '202':
+          description: Deletion request accepted for review/retention processing
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '409':
+          $ref: '#/components/responses/Conflict'
+  /admin/applications:
+    get:
+      tags: [Admin]
+      operationId: listApplications
+      summary: List verified applicants awaiting review
+      security:
+        - bearerAuth: []
+      x-allowed-roles: [admin]
+      parameters:
+        - $ref: '#/components/parameters/Page'
+        - $ref: '#/components/parameters/PageSize'
+        - name: role
+          in: query
+          schema:
+            type: string
+            enum: [farmer, processor]
+        - name: regionCode
+          in: query
+          schema:
+            type: string
+      responses:
+        '200':
+          description: Review queue
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/PaginatedUsers'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+  /admin/applications/{userId}:
+    parameters:
+      - $ref: '#/components/parameters/UserId'
+    get:
+      tags: [Admin]
+      operationId: getApplication
+      summary: Get applicant profile and review history
+      security:
+        - bearerAuth: []
+      x-allowed-roles: [admin]
+      responses:
+        '200':
+          description: Applicant and review attempts
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/User'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '404':
+          $ref: '#/components/responses/NotFound'
+  /admin/applications/{userId}/approve:
+    parameters:
+      - $ref: '#/components/parameters/UserId'
+    post:
+      tags: [Admin]
+      operationId: approveApplication
+      summary: Approve an eligible applicant
+      security:
+        - bearerAuth: []
+      x-allowed-roles: [admin]
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/DecisionRequest'
+      responses:
+        '200':
+          description: Account approved and decision audited
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/DecisionResponse'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '409':
+          $ref: '#/components/responses/Conflict'
+  /admin/applications/{userId}/reject:
+    parameters:
+      - $ref: '#/components/parameters/UserId'
+    post:
+      tags: [Admin]
+      operationId: rejectApplication
+      summary: Reject an applicant with a reason
+      security:
+        - bearerAuth: []
+      x-allowed-roles: [admin]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/RejectRequest'
+      responses:
+        '200':
+          description: Account rejected and decision audited
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/DecisionResponse'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '409':
+          $ref: '#/components/responses/Conflict'
+        '422':
+          $ref: '#/components/responses/ValidationError'
+  /admin/users/{userId}/suspend:
+    parameters:
+      - $ref: '#/components/parameters/UserId'
+    post:
+      tags: [Admin]
+      operationId: suspendUser
+      summary: Suspend user, revoke sessions, and audit the decision
+      security:
+        - bearerAuth: []
+      x-allowed-roles: [admin]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/RejectRequest'
+      responses:
+        '200':
+          description: Account suspended and sessions revoked
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/DecisionResponse'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '409':
+          $ref: '#/components/responses/Conflict'
+        '422':
+          $ref: '#/components/responses/ValidationError'
+  /admin/users/{userId}/reinstate:
+    parameters:
+      - $ref: '#/components/parameters/UserId'
+    post:
+      tags: [Admin]
+      operationId: reinstateUser
+      summary: Reinstate a suspended user
+      security:
+        - bearerAuth: []
+      x-allowed-roles: [admin]
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/DecisionRequest'
+      responses:
+        '200':
+          description: Account reinstated and decision audited
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/DecisionResponse'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '409':
+          $ref: '#/components/responses/Conflict'
+  /admin/audit-events:
+    get:
+      tags: [Admin]
+      operationId: listAuditEvents
+      summary: Query redacted administrative and security audit events
+      security:
+        - bearerAuth: []
+      x-allowed-roles: [admin]
+      parameters:
+        - $ref: '#/components/parameters/Page'
+        - $ref: '#/components/parameters/PageSize'
+        - name: actorId
+          in: query
+          schema:
+            type: string
+            format: uuid
+        - name: action
+          in: query
+          schema:
+            type: string
+        - name: targetId
+          in: query
+          schema:
+            type: string
+            format: uuid
+      responses:
+        '200':
+          description: Paginated audit events
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/PaginatedAuditEvents'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+  /listings:
+    get:
+      tags: [Listings]
+      operationId: listListings
+      summary: Search listings as an approved processor, or view own listings as a farmer
+      security:
+        - bearerAuth: []
+      x-allowed-roles: [farmer, processor]
+      x-required-account-status: approved
+      parameters:
+        - $ref: '#/components/parameters/Page'
+        - $ref: '#/components/parameters/PageSize'
+        - name: regionCode
+          in: query
+          schema:
+            type: string
+        - name: minLiters
+          in: query
+          schema:
+            type: integer
+            minimum: 1
+      responses:
+        '200':
+          description: Listings visible to caller
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/PaginatedListings'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+    post:
+      tags: [Listings]
+      operationId: createListing
+      summary: Publish a milk listing
+      security:
+        - bearerAuth: []
+      x-allowed-roles: [farmer]
+      x-required-account-status: approved
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/ListingInput'
+      responses:
+        '201':
+          description: Listing created
+          content:
+            application/json:
+              schema:
+                type: object
+                required: [listing]
+                properties:
+                  listing:
+                    $ref: '#/components/schemas/Listing'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '422':
+          $ref: '#/components/responses/ValidationError'
+  /listings/{listingId}:
+    parameters:
+      - name: listingId
+        in: path
+        required: true
+        schema:
+          type: string
+          format: uuid
+    get:
+      tags: [Listings]
+      operationId: getListing
+      summary: Get a listing visible to its farmer owner or a processor
+      security:
+        - bearerAuth: []
+      x-allowed-roles: [farmer, processor]
+      x-required-account-status: approved
+      responses:
+        '200':
+          description: Listing
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Listing'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '404':
+          $ref: '#/components/responses/NotFound'
+    patch:
+      tags: [Listings]
+      operationId: updateListing
+      summary: Update an owned listing
+      security:
+        - bearerAuth: []
+      x-allowed-roles: [farmer]
+      x-required-account-status: approved
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/ListingUpdate'
+      responses:
+        '200':
+          description: Updated listing
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Listing'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '409':
+          $ref: '#/components/responses/Conflict'
+        '422':
+          $ref: '#/components/responses/ValidationError'
+    delete:
+      tags: [Listings]
+      operationId: archiveListing
+      summary: Archive an owned listing if no active reservations prevent it
+      security:
+        - bearerAuth: []
+      x-allowed-roles: [farmer]
+      x-required-account-status: approved
+      responses:
+        '204':
+          description: Listing archived
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '409':
+          $ref: '#/components/responses/Conflict'
+  /orders:
+    get:
+      tags: [Orders]
+      operationId: listOrders
+      summary: List orders in which the caller is a party
+      security:
+        - bearerAuth: []
+      x-allowed-roles: [farmer, processor]
+      x-required-account-status: approved
+      parameters:
+        - $ref: '#/components/parameters/Page'
+        - $ref: '#/components/parameters/PageSize'
+        - name: status
+          in: query
+          schema:
+            $ref: '#/components/schemas/OrderStatus'
+      responses:
+        '200':
+          description: Caller-owned party orders
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/PaginatedOrders'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+    post:
+      tags: [Orders]
+      operationId: createOrder
+      summary: Place an order for an active listing
+      security:
+        - bearerAuth: []
+      x-allowed-roles: [processor]
+      x-required-account-status: approved
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/OrderInput'
+      responses:
+        '201':
+          description: Order placed with price snapshot
+          content:
+            application/json:
+              schema:
+                type: object
+                required: [order]
+                properties:
+                  order:
+                    $ref: '#/components/schemas/Order'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '409':
+          $ref: '#/components/responses/Conflict'
+        '422':
+          $ref: '#/components/responses/ValidationError'
+  /orders/{orderId}:
+    parameters:
+      - name: orderId
+        in: path
+        required: true
+        schema:
+          type: string
+          format: uuid
+    get:
+      tags: [Orders]
+      operationId: getOrder
+      summary: Get an order and status history as one of its parties
+      security:
+        - bearerAuth: []
+      x-allowed-roles: [farmer, processor]
+      x-required-account-status: approved
+      responses:
+        '200':
+          description: Order and immutable status history
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Order'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '404':
+          $ref: '#/components/responses/NotFound'
+  /orders/{orderId}/accept:
+    parameters:
+      - $ref: '#/components/parameters/OrderId'
+    post:
+      tags: [Orders]
+      operationId: acceptOrder
+      summary: Accept a placed order as its farmer
+      security:
+        - bearerAuth: []
+      x-allowed-roles: [farmer]
+      x-required-account-status: approved
+      responses:
+        '200':
+          description: Order accepted
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Order'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '409':
+          $ref: '#/components/responses/Conflict'
+  /orders/{orderId}/reject:
+    parameters:
+      - $ref: '#/components/parameters/OrderId'
+    post:
+      tags: [Orders]
+      operationId: rejectOrder
+      summary: Reject a placed order as its farmer
+      security:
+        - bearerAuth: []
+      x-allowed-roles: [farmer]
+      x-required-account-status: approved
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/DecisionRequest'
+      responses:
+        '200':
+          description: Order rejected
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Order'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '409':
+          $ref: '#/components/responses/Conflict'
+        '422':
+          $ref: '#/components/responses/ValidationError'
+  /orders/{orderId}/cancel:
+    parameters:
+      - $ref: '#/components/parameters/OrderId'
+    post:
+      tags: [Orders]
+      operationId: cancelOrder
+      summary: Cancel an order before farmer acceptance as its processor
+      security:
+        - bearerAuth: []
+      x-allowed-roles: [processor]
+      x-required-account-status: approved
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/DecisionRequest'
+      responses:
+        '200':
+          description: Order cancelled and reserved quantity released
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Order'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '409':
+          $ref: '#/components/responses/Conflict'
+  /orders/{orderId}/status:
+    parameters:
+      - $ref: '#/components/parameters/OrderId'
+    post:
+      tags: [Orders]
+      operationId: transitionOrder
+      summary: Record the next actor-authorized fulfillment status
+      security:
+        - bearerAuth: []
+      x-allowed-roles: [farmer, processor]
+      x-required-account-status: approved
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/OrderStatusRequest'
+      responses:
+        '200':
+          description: Order transitioned and history appended
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Order'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '409':
+          $ref: '#/components/responses/Conflict'
+        '422':
+          $ref: '#/components/responses/ValidationError'
+  /orders/{orderId}/disputes:
+    parameters:
+      - $ref: '#/components/parameters/OrderId'
+    post:
+      tags: [Orders]
+      operationId: createOrderDispute
+      summary: Open a fulfillment dispute before order completion
+      security:
+        - bearerAuth: []
+      x-allowed-roles: [farmer, processor]
+      x-required-account-status: approved
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/RejectRequest'
+      responses:
+        '201':
+          description: Dispute recorded
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '409':
+          $ref: '#/components/responses/Conflict'
+        '422':
+          $ref: '#/components/responses/ValidationError'
+  /orders/{orderId}/quality-reports:
+    parameters:
+      - $ref: '#/components/parameters/OrderId'
+    post:
+      tags: [Orders]
+      operationId: createQualityReport
+      summary: Record quality measurements for an order
+      security:
+        - bearerAuth: []
+      x-allowed-roles: [farmer, processor]
+      x-required-account-status: approved
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/QualityReportInput'
+      responses:
+        '201':
+          description: Quality report recorded
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '409':
+          $ref: '#/components/responses/Conflict'
+        '422':
+          $ref: '#/components/responses/ValidationError'
+  /dashboards/farmer:
+    get:
+      tags: [Dashboards]
+      operationId: getFarmerDashboard
+      summary: Get aggregated farmer dashboard data
+      security:
+        - bearerAuth: []
+      x-allowed-roles: [farmer]
+      x-required-account-status: approved
+      parameters:
+        - $ref: '#/components/parameters/From'
+        - $ref: '#/components/parameters/To'
+      responses:
+        '200':
+          description: Database-computed farmer KPIs, charts, and tables
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Dashboard'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+  /dashboards/processor:
+    get:
+      tags: [Dashboards]
+      operationId: getProcessorDashboard
+      summary: Get aggregated processor dashboard data
+      security:
+        - bearerAuth: []
+      x-allowed-roles: [processor]
+      x-required-account-status: approved
+      parameters:
+        - $ref: '#/components/parameters/From'
+        - $ref: '#/components/parameters/To'
+      responses:
+        '200':
+          description: Database-computed processor KPIs, charts, and tables
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Dashboard'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+  /dashboards/admin:
+    get:
+      tags: [Dashboards]
+      operationId: getAdminDashboard
+      summary: Get aggregated administrator dashboard data
+      security:
+        - bearerAuth: []
+      x-allowed-roles: [admin]
+      responses:
+        '200':
+          description: Database-computed admin KPIs, charts, and tables
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Dashboard'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+  /healthz:
+    get:
+      tags: [Health]
+      operationId: getHealth
+      summary: Liveness probe
+      responses:
+        '200':
+          description: Process is live
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  status:
+                    type: string
+                    enum: [ok]
+  /readyz:
+    get:
+      tags: [Health]
+      operationId: getReadiness
+      summary: Readiness probe including database connectivity
+      responses:
+        '200':
+          description: Dependencies ready
+        '503':
+          description: Dependency unavailable
+  /metrics:
+    get:
+      tags: [Health]
+      operationId: getMetrics
+      summary: Expose Prometheus metrics to internal monitoring only
+      description: This endpoint must not be publicly exposed; production network access is restricted.
+      security:
+        - bearerAuth: []
+      responses:
+        '200':
+          description: Prometheus exposition format
+          content:
+            text/plain:
+              schema:
+                type: string
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+components:
+  securitySchemes:
+    bearerAuth:
+      type: http
+      scheme: bearer
+      bearerFormat: JWT
+    refreshCookie:
+      type: apiKey
+      in: cookie
+      name: zf_refresh
+  parameters:
+    Page:
+      name: page
+      in: query
+      schema:
+        type: integer
+        minimum: 1
+        default: 1
+    PageSize:
+      name: pageSize
+      in: query
+      schema:
+        type: integer
+        minimum: 1
+        maximum: 100
+        default: 20
+    UserId:
+      name: userId
+      in: path
+      required: true
+      schema:
+        type: string
+        format: uuid
+    OrderId:
+      name: orderId
+      in: path
+      required: true
+      schema:
+        type: string
+        format: uuid
+    From:
+      name: from
+      in: query
+      schema:
+        type: string
+        format: date-time
+    To:
+      name: to
+      in: query
+      schema:
+        type: string
+        format: date-time
+  responses:
+    BadRequest:
+      description: Malformed request
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/ErrorResponse'
+    Unauthorized:
+      description: Missing or invalid authentication
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/ErrorResponse'
+    Forbidden:
+      description: Wrong role, unapproved account, or missing MFA
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/ErrorResponse'
+    NotFound:
+      description: Resource not found or inaccessible
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/ErrorResponse'
+    Conflict:
+      description: Duplicate or invalid state transition
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/ErrorResponse'
+    ValidationError:
+      description: Field validation failed
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/ErrorResponse'
+    RateLimited:
+      description: Rate limit exceeded
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/ErrorResponse'
+  schemas:
+    RoleOption:
+      type: object
+      required: [value, label]
+      properties:
+        value:
+          type: string
+          enum: [farmer, processor]
+        label:
+          type: string
+    SignUpRequest:
+      type: object
+      additionalProperties: false
+      required: [fullName, email, password, role, phone, organizationName, regionCode, stir]
+      properties:
+        fullName:
+          type: string
+          minLength: 2
+          maxLength: 160
+        email:
+          type: string
+          format: email
+          maxLength: 254
+        password:
+          type: string
+          minLength: 12
+          maxLength: 128
+        role:
+          type: string
+          enum: [farmer, processor]
+        phone:
+          type: string
+          pattern: '^\+998[0-9]{9}$'
+        organizationName:
+          type: string
+          minLength: 2
+          maxLength: 200
+        regionCode:
+          type: string
+          maxLength: 32
+        stir:
+          type: string
+          maxLength: 32
+    SignInRequest:
+      type: object
+      additionalProperties: false
+      required: [email, password]
+      properties:
+        email:
+          type: string
+          format: email
+        password:
+          type: string
+          format: password
+        totpCode:
+          type: string
+        recoveryCode:
+          type: string
+    ProfileUpdate:
+      type: object
+      additionalProperties: false
+      minProperties: 1
+      properties:
+        fullName:
+          type: string
+          minLength: 2
+          maxLength: 160
+        phone:
+          type: string
+          pattern: '^\+998[0-9]{9}$'
+        organizationName:
+          type: string
+          minLength: 2
+          maxLength: 200
+        regionCode:
+          type: string
+          maxLength: 32
+        stir:
+          type: string
+          maxLength: 32
+    User:
+      type: object
+      required: [id, role, accountStatus, email, emailVerified, fullName, createdAt]
+      properties:
+        id:
+          type: string
+          format: uuid
+        role:
+          type: string
+          enum: [farmer, processor, admin]
+        accountStatus:
+          type: string
+          enum: [pending, approved, rejected, suspended]
+        email:
+          type: string
+          format: email
+        emailVerified:
+          type: boolean
+        fullName:
+          type: string
+        phone:
+          type: string
+        organizationName:
+          type: string
+        regionCode:
+          type: string
+        stir:
+          type: string
+        rejectionReason:
+          type: string
+        createdAt:
+          type: string
+          format: date-time
+    Region:
+      type: object
+      required: [code, name]
+      properties:
+        code:
+          type: string
+        name:
+          type: string
+    ListingInput:
+      type: object
+      additionalProperties: false
+      required: [regionCode, availableLiters, fatPercent, pricePerLiterUzs, availableFrom, availableUntil]
+      properties:
+        regionCode:
+          type: string
+        availableLiters:
+          type: integer
+          minimum: 1
+        fatPercent:
+          type: number
+          minimum: 0
+          maximum: 100
+        pricePerLiterUzs:
+          type: integer
+          minimum: 1
+        availableFrom:
+          type: string
+          format: date-time
+        availableUntil:
+          type: string
+          format: date-time
+    Listing:
+      allOf:
+        - $ref: '#/components/schemas/ListingInput'
+        - type: object
+          required: [id, farmerId, status, createdAt]
+          properties:
+            id:
+              type: string
+              format: uuid
+            farmerId:
+              type: string
+              format: uuid
+            status:
+              type: string
+              enum: [draft, active, paused, sold_out, expired]
+            createdAt:
+              type: string
+              format: date-time
+    OrderInput:
+      type: object
+      additionalProperties: false
+      required: [listingId, liters, expectedPickupAt]
+      properties:
+        listingId:
+          type: string
+          format: uuid
+        liters:
+          type: integer
+          minimum: 1
+        expectedPickupAt:
+          type: string
+          format: date-time
+        note:
+          type: string
+          maxLength: 2000
+    OrderStatus:
+      type: string
+      enum: [placed, accepted, rejected, cancelled, ready_for_pickup, picked_up, delivered, completed, disputed]
+    Order:
+      type: object
+      required: [id, listingId, farmerId, processorId, liters, pricePerLiterUzs, totalUzs, status, createdAt]
+      properties:
+        id:
+          type: string
+          format: uuid
+        listingId:
+          type: string
+          format: uuid
+        farmerId:
+          type: string
+          format: uuid
+        processorId:
+          type: string
+          format: uuid
+        liters:
+          type: integer
+        pricePerLiterUzs:
+          type: integer
+        totalUzs:
+          type: integer
+        status:
+          $ref: '#/components/schemas/OrderStatus'
+        expectedPickupAt:
+          type: string
+          format: date-time
+        createdAt:
+          type: string
+          format: date-time
+    Pagination:
+      type: object
+      required: [page, pageSize, total]
+      properties:
+        page:
+          type: integer
+        pageSize:
+          type: integer
+        total:
+          type: integer
+    PaginatedRegions:
+      allOf:
+        - $ref: '#/components/schemas/Pagination'
+        - type: object
+          required: [items]
+          properties:
+            items:
+              type: array
+              items:
+                $ref: '#/components/schemas/Region'
+    PaginatedUsers:
+      allOf:
+        - $ref: '#/components/schemas/Pagination'
+        - type: object
+          required: [items]
+          properties:
+            items:
+              type: array
+              items:
+                $ref: '#/components/schemas/User'
+    PaginatedListings:
+      allOf:
+        - $ref: '#/components/schemas/Pagination'
+        - type: object
+          required: [items]
+          properties:
+            items:
+              type: array
+              items:
+                $ref: '#/components/schemas/Listing'
+    PaginatedOrders:
+      allOf:
+        - $ref: '#/components/schemas/Pagination'
+        - type: object
+          required: [items]
+          properties:
+            items:
+              type: array
+              items:
+                $ref: '#/components/schemas/Order'
+    PaginatedSessions:
+      allOf:
+        - $ref: '#/components/schemas/Pagination'
+        - type: object
+          required: [items]
+          properties:
+            items:
+              type: array
+              items:
+                type: object
+                required: [id, createdAt, lastUsedAt]
+                properties:
+                  id:
+                    type: string
+                    format: uuid
+                  createdAt:
+                    type: string
+                    format: date-time
+                  lastUsedAt:
+                    type: string
+                    format: date-time
+    PaginatedAuditEvents:
+      allOf:
+        - $ref: '#/components/schemas/Pagination'
+        - type: object
+          required: [items]
+          properties:
+            items:
+              type: array
+              items:
+                type: object
+                additionalProperties: true
+    AuthResponse:
+      type: object
+      required: [accessToken, expiresAt, user]
+      properties:
+        accessToken:
+          type: string
+        expiresAt:
+          type: string
+          format: date-time
+        user:
+          $ref: '#/components/schemas/User'
+    DecisionRequest:
+      type: object
+      additionalProperties: false
+      properties:
+        reason:
+          type: string
+          maxLength: 2000
+    RejectRequest:
+      type: object
+      additionalProperties: false
+      required: [reason]
+      properties:
+        reason:
+          type: string
+          minLength: 1
+          maxLength: 2000
+    EmailRequest:
+      type: object
+      additionalProperties: false
+      required: [email]
+      properties:
+        email:
+          type: string
+          format: email
+          maxLength: 254
+    TokenRequest:
+      type: object
+      additionalProperties: false
+      required: [token]
+      properties:
+        token:
+          type: string
+          minLength: 1
+          maxLength: 512
+    PasswordResetRequest:
+      type: object
+      additionalProperties: false
+      required: [token, newPassword]
+      properties:
+        token:
+          type: string
+          minLength: 1
+          maxLength: 512
+        newPassword:
+          type: string
+          minLength: 12
+          maxLength: 128
+    ChangePasswordRequest:
+      type: object
+      additionalProperties: false
+      required: [currentPassword, newPassword]
+      properties:
+        currentPassword:
+          type: string
+          format: password
+        newPassword:
+          type: string
+          minLength: 12
+          maxLength: 128
+    TotpCodeRequest:
+      type: object
+      additionalProperties: false
+      required: [code]
+      properties:
+        code:
+          type: string
+          minLength: 6
+          maxLength: 32
+    ListingUpdate:
+      type: object
+      additionalProperties: false
+      minProperties: 1
+      properties:
+        availableLiters:
+          type: integer
+          minimum: 1
+        fatPercent:
+          type: number
+          minimum: 0
+          maximum: 100
+        pricePerLiterUzs:
+          type: integer
+          minimum: 1
+        availableFrom:
+          type: string
+          format: date-time
+        availableUntil:
+          type: string
+          format: date-time
+        status:
+          type: string
+          enum: [active, paused]
+    OrderStatusRequest:
+      type: object
+      additionalProperties: false
+      required: [status]
+      properties:
+        status:
+          type: string
+          enum: [ready_for_pickup, picked_up, delivered, completed]
+        note:
+          type: string
+          maxLength: 2000
+    QualityReportInput:
+      type: object
+      additionalProperties: false
+      required: [measurements, outcome]
+      properties:
+        measurements:
+          type: object
+          additionalProperties:
+            type: number
+        outcome:
+          type: string
+          enum: [accepted, rejected]
+        note:
+          type: string
+          maxLength: 2000
+    DecisionResponse:
+      type: object
+      required: [user, review]
+      properties:
+        user:
+          $ref: '#/components/schemas/User'
+        review:
+          type: object
+          additionalProperties: true
+    Dashboard:
+      type: object
+      required: [period, kpis, charts, tables]
+      properties:
+        period:
+          type: object
+          required: [from, to, bucket]
+          properties:
+            from:
+              type: string
+              format: date-time
+            to:
+              type: string
+              format: date-time
+            bucket:
+              type: string
+              enum: [day, month]
+        kpis:
+          type: object
+          additionalProperties: true
+        charts:
+          type: object
+          additionalProperties: true
+        tables:
+          type: object
+          additionalProperties: true
+    FieldError:
+      type: object
+      required: [field, code, message]
+      properties:
+        field:
+          type: string
+        code:
+          type: string
+        message:
+          type: string
+    ErrorResponse:
+      type: object
+      required: [error]
+      properties:
+        error:
+          type: object
+          required: [code, message, requestId]
+          properties:
+            code:
+              type: string
+            message:
+              type: string
+            requestId:
+              type: string
+            fieldErrors:
+              type: array
+              items:
+                $ref: '#/components/schemas/FieldError'

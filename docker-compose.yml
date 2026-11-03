@@ -1,0 +1,72 @@
+services:
+  postgres:
+    image: postgres:16.10-alpine3.21
+    environment:
+      POSTGRES_DB: ${POSTGRES_DB:-zaminflow}
+      POSTGRES_USER: ${POSTGRES_USER:-zaminflow}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:?Set POSTGRES_PASSWORD in .env}
+    ports:
+      - "${POSTGRES_PORT:-5432}:5432"
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U \"$${POSTGRES_USER}\" -d \"$${POSTGRES_DB}\""]
+      interval: 5s
+      timeout: 3s
+      retries: 20
+    restart: unless-stopped
+
+  migrate:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    entrypoint: ["/app/migrate"]
+    environment:
+      APP_ENV: ${APP_ENV:-development}
+      DATABASE_URL: postgres://${POSTGRES_USER:-zaminflow}:${POSTGRES_PASSWORD:?Set POSTGRES_PASSWORD in .env}@postgres:5432/${POSTGRES_DB:-zaminflow}?sslmode=disable
+      MIGRATIONS_DIR: /app/migrations
+    depends_on:
+      postgres:
+        condition: service_healthy
+    restart: "no"
+
+  api:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    env_file:
+      - .env
+    environment:
+      DATABASE_URL: postgres://${POSTGRES_USER:-zaminflow}:${POSTGRES_PASSWORD:?Set POSTGRES_PASSWORD in .env}@postgres:5432/${POSTGRES_DB:-zaminflow}?sslmode=disable
+      MIGRATIONS_DIR: /app/migrations
+    ports:
+      - "${API_PORT:-8080}:8080"
+    depends_on:
+      migrate:
+        condition: service_completed_successfully
+    healthcheck:
+      test: ["CMD", "wget", "-q", "--spider", "http://127.0.0.1:8080/healthz"]
+      interval: 10s
+      timeout: 3s
+      retries: 5
+    restart: unless-stopped
+
+  mailpit:
+    image: axllent/mailpit:v1.27.8
+    ports:
+      - "${MAILPIT_SMTP_PORT:-1025}:1025"
+      - "${MAILPIT_UI_PORT:-8025}:8025"
+    restart: unless-stopped
+
+  swagger-ui:
+    image: swaggerapi/swagger-ui:v5.18.2
+    environment:
+      SWAGGER_JSON_URL: /docs/openapi.yaml
+    volumes:
+      - ./docs:/usr/share/nginx/html/docs:ro
+    ports:
+      - "${SWAGGER_PORT:-8081}:8080"
+    profiles: ["dev-tools"]
+
+volumes:
+  postgres_data:

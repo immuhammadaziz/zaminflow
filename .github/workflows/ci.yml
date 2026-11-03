@@ -1,0 +1,51 @@
+name: CI
+
+on:
+  push:
+    branches: [main, "feature/**"]
+  pull_request:
+
+permissions:
+  contents: read
+
+jobs:
+  go:
+    runs-on: ubuntu-latest
+    services:
+      postgres:
+        image: postgres:16.10-alpine3.21
+        env:
+          POSTGRES_DB: zaminflow_test
+          POSTGRES_USER: zaminflow
+          POSTGRES_PASSWORD: ci-only-password
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd "pg_isready -U zaminflow -d zaminflow_test"
+          --health-interval 5s
+          --health-timeout 3s
+          --health-retries 10
+    env:
+      APP_ENV: test
+      DATABASE_URL: postgres://zaminflow:ci-only-password@localhost:5432/zaminflow_test?sslmode=disable
+      CORS_ALLOWED_ORIGINS: https://www.zaminflow.uz,http://localhost:3000
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-go@v5
+        with:
+          go-version: 1.27.3
+          cache: true
+      - name: Check formatting
+        shell: bash
+        run: test -z "$(gofmt -l $(git ls-files '*.go'))"
+      - name: Vet
+        run: go vet ./...
+      - name: Test migrations up and down
+        run: |
+          go run ./cmd/migrate
+          go run ./cmd/migrate --direction down
+          go run ./cmd/migrate
+      - name: Test with race detector
+        run: go test -race ./...
+      - name: Build
+        run: go build ./cmd/api ./cmd/migrate
