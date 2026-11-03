@@ -16,7 +16,7 @@ vet:
 	go vet ./...
 
 build:
-	go build ./cmd/api ./cmd/migrate
+	go build ./cmd/api ./cmd/migrate ./cmd/admin
 
 migrate:
 	go run ./cmd/migrate

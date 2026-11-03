@@ -21,6 +21,7 @@ func requestIDMiddleware(logger *slog.Logger) func(http.Handler) http.Handler {
 			}
 			requestID := hex.EncodeToString(bytes[:])
 			ctx := context.WithValue(r.Context(), requestIDKey{}, requestID)
+			r.Header.Set("X-Request-ID", requestID)
 			w.Header().Set("X-Request-ID", requestID)
 			next.ServeHTTP(w, r.WithContext(ctx))
 		})

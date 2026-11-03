@@ -10,9 +10,12 @@ import (
 	"syscall"
 	"time"
 
+	"github.com/go-chi/chi/v5"
+	"github.com/zaminflow/zaminflow-api/internal/auth"
 	"github.com/zaminflow/zaminflow-api/internal/config"
 	"github.com/zaminflow/zaminflow-api/internal/httpapi"
 	"github.com/zaminflow/zaminflow-api/internal/platform/db"
+	"github.com/zaminflow/zaminflow-api/internal/platform/mail"
 )
 
 func main() {
@@ -39,7 +42,34 @@ func run() error {
 	}
 	defer pool.Close()
 
-	handler := httpapi.NewRouter(pool, logger, cfg.CORSAllowedOrigins, cfg.HTTPRequestTimeout, cfg.HTTPMaxBodyBytes)
+	authService, err := auth.NewService(startupCtx, pool, cfg, logger)
+	if err != nil {
+		return err
+	}
+	mailSender := mail.NewSMTP(cfg.SMTPHost, cfg.SMTPPort, cfg.SMTPUser, cfg.SMTPPassword, cfg.MailFrom, cfg.SMTPRequireTLS)
+	outboxCtx, stopOutbox := context.WithCancel(context.Background())
+	outboxDone := make(chan struct{})
+	go func() {
+		defer close(outboxDone)
+		mail.RunOutbox(outboxCtx, pool, mailSender, logger)
+	}()
+	maintenanceDone := make(chan struct{})
+	go func() {
+		defer close(maintenanceDone)
+		authService.RunMaintenance(outboxCtx)
+	}()
+	defer func() {
+		stopOutbox()
+		<-outboxDone
+		<-maintenanceDone
+	}()
+	handler := httpapi.NewRouter(pool, logger, cfg.CORSAllowedOrigins, cfg.HTTPRequestTimeout, cfg.HTTPMaxBodyBytes,
+		httpapi.RouterOptions{
+			MetricsToken: cfg.MetricsToken,
+			RegisterAPI: func(router chi.Router) {
+				auth.RegisterRoutes(router, authService, cfg)
+			},
+		})
 	server := &http.Server{
 		Addr:              cfg.HTTPAddr,
 		Handler:           handler,

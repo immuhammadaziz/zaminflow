@@ -113,3 +113,29 @@ func TestUnknownRouteUsesErrorEnvelope(t *testing.T) {
 		t.Fatalf("error = %#v", body.Error)
 	}
 }
+
+func TestMetricsRequiresTokenAndUsesRouteTemplates(t *testing.T) {
+	handler := NewRouter(fakePinger{}, slog.New(slog.NewTextHandler(io.Discard, nil)),
+		[]string{"https://www.zaminflow.uz"}, time.Second, 1024,
+		RouterOptions{MetricsToken: "a-valid-test-metrics-token"})
+	health := httptest.NewRecorder()
+	handler.ServeHTTP(health, httptest.NewRequest(http.MethodGet, "/healthz", nil))
+
+	response := httptest.NewRecorder()
+	handler.ServeHTTP(response, httptest.NewRequest(http.MethodGet, "/metrics", nil))
+	if response.Code != http.StatusUnauthorized {
+		t.Fatalf("unauthenticated metrics status = %d, want %d", response.Code, http.StatusUnauthorized)
+	}
+
+	request := httptest.NewRequest(http.MethodGet, "/metrics", nil)
+	request.Header.Set("Authorization", "Bearer a-valid-test-metrics-token")
+	response = httptest.NewRecorder()
+	handler.ServeHTTP(response, request)
+	if response.Code != http.StatusOK {
+		t.Fatalf("authorized metrics status = %d, want %d", response.Code, http.StatusOK)
+	}
+	if !strings.Contains(response.Body.String(), `route="/healthz"`) ||
+		strings.Contains(response.Body.String(), "a-valid-test-metrics-token") {
+		t.Fatalf("unexpected metrics output: %s", response.Body.String())
+	}
+}

@@ -11,35 +11,52 @@ permissions:
 jobs:
   go:
     runs-on: ubuntu-latest
-    services:
-      postgres:
-        image: postgres:16.10-alpine3.21
-        env:
-          POSTGRES_DB: zaminflow_test
-          POSTGRES_USER: zaminflow
-          POSTGRES_PASSWORD: ci-only-password
-        ports:
-          - 5432:5432
-        options: >-
-          --health-cmd "pg_isready -U zaminflow -d zaminflow_test"
-          --health-interval 5s
-          --health-timeout 3s
-          --health-retries 10
     env:
       APP_ENV: test
+      APP_SECRET: ci-only-secret-at-least-32-characters
       DATABASE_URL: postgres://zaminflow:ci-only-password@localhost:5432/zaminflow_test?sslmode=disable
+      MAIL_TEST_DATABASE_URL: postgres://zaminflow:ci-only-password@localhost:5432/zaminflow_mail_test?sslmode=disable
       CORS_ALLOWED_ORIGINS: https://www.zaminflow.uz,http://localhost:3000
+      PGPASSWORD: ci-only-password
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-go@v5
         with:
           go-version: 1.27.3
           cache: true
+      - name: Build and start isolated PostgreSQL
+        run: |
+          docker build --pull -f deploy/Postgres.Dockerfile -t zaminflow-postgres:ci .
+          docker run --detach --name zaminflow-postgres-ci \
+            --publish 5432:5432 \
+            --health-cmd "pg_isready -U zaminflow -d zaminflow_test" \
+            --health-interval 5s --health-timeout 3s --health-retries 10 \
+            --env POSTGRES_DB=zaminflow_test \
+            --env POSTGRES_USER=zaminflow \
+            --env POSTGRES_PASSWORD=ci-only-password \
+            zaminflow-postgres:ci
+          for attempt in $(seq 1 30); do
+            status="$(docker inspect --format='{{.State.Health.Status}}' zaminflow-postgres-ci)"
+            if [ "$status" = healthy ]; then
+              exit 0
+            fi
+            if [ "$status" = unhealthy ]; then
+              docker logs zaminflow-postgres-ci
+              exit 1
+            fi
+            sleep 2
+          done
+          docker logs zaminflow-postgres-ci
+          exit 1
       - name: Check formatting
         shell: bash
         run: test -z "$(gofmt -l $(git ls-files '*.go'))"
       - name: Vet
         run: go vet ./...
+      - name: Prepare isolated mail integration database
+        run: |
+          createdb --host=localhost --username=zaminflow zaminflow_mail_test
+          DATABASE_URL="$MAIL_TEST_DATABASE_URL" go run ./cmd/migrate
       - name: Test migrations up and down
         run: |
           go run ./cmd/migrate
@@ -47,5 +64,81 @@ jobs:
           go run ./cmd/migrate
       - name: Test with race detector
         run: go test -race ./...
+      - name: Fuzz token parsers
+        run: |
+          go test ./internal/auth -run='^$' -fuzz=FuzzValidCSRFToken -fuzztime=5s
+          go test ./internal/auth -run='^$' -fuzz=FuzzVerifyAccessToken -fuzztime=5s
+      - name: Scan Go dependencies
+        run: go run golang.org/x/vuln/cmd/govulncheck@v1.9.0 ./...
       - name: Build
-        run: go build ./cmd/api ./cmd/migrate
+        run: go build ./cmd/api ./cmd/migrate ./cmd/admin
+      - name: Build container image
+        run: docker build --pull -t zaminflow-api:ci .
+      - name: Test file-backed container secrets
+        run: |
+          secrets_dir="$(mktemp -d)"
+          postgres_name="zaminflow-postgres-secret-${GITHUB_RUN_ID}"
+          trap 'docker rm -f "$postgres_name" >/dev/null 2>&1 || true; rm -rf "$secrets_dir"' EXIT
+          chmod 700 "$secrets_dir"
+          printf '%s' 'ci-only-secret-at-least-32-characters' > "$secrets_dir/app"
+          printf '%s' 'zaminflow_ci' > "$secrets_dir/db-user"
+          printf '%s' 'ci-only-password' > "$secrets_dir/db-password"
+          chmod 600 "$secrets_dir"/*
+
+          uid="$(docker run --rm \
+            --tmpfs /run/app-secrets:rw,noexec,nosuid,size=1m \
+            --mount "type=bind,source=$secrets_dir,target=/run/secrets,readonly" \
+            --env APP_SECRET_FILE=/run/secrets/app \
+            zaminflow-api:ci /usr/bin/id -u)"
+          test "$uid" = 65532
+          docker run --rm \
+            --tmpfs /run/app-secrets:rw,noexec,nosuid,size=1m \
+            --mount "type=bind,source=$secrets_dir,target=/run/secrets,readonly" \
+            --env APP_SECRET_FILE=/run/secrets/app \
+            zaminflow-api:ci /bin/busybox test -r /run/app-secrets/APP_SECRET
+
+          docker run --detach --name "$postgres_name" \
+            --tmpfs /run/postgres-secrets:rw,noexec,nosuid,size=1m \
+            --mount "type=bind,source=$secrets_dir,target=/run/secrets,readonly" \
+            --env APP_ENV=production \
+            --env POSTGRES_DB=zaminflow_secret_test \
+            --env POSTGRES_USER_FILE=/run/secrets/db-user \
+            --env POSTGRES_PASSWORD_FILE=/run/secrets/db-password \
+            zaminflow-postgres:ci
+          ready=0
+          for attempt in $(seq 1 30); do
+            if docker exec "$postgres_name" pg_isready -U zaminflow_ci -d zaminflow_secret_test; then
+              ready=1
+              break
+            fi
+            sleep 2
+          done
+          if [ "$ready" -ne 1 ]; then
+            docker logs "$postgres_name"
+            exit 1
+          fi
+          postgres_uid="$(docker exec "$postgres_name" id -u postgres)"
+          docker top "$postgres_name" -eo uid,comm |
+            awk -v uid="$postgres_uid" '$1 == uid && $2 == "postgres" { found = 1 } END { exit !found }'
+      - name: Build production proxy image
+        run: docker build --pull -f deploy/Caddy.Dockerfile -t zaminflow-caddy:ci .
+      - name: Validate proxy configuration
+        run: |
+          docker run --rm \
+            --env API_DOMAIN=api.example.invalid \
+            --volume "$GITHUB_WORKSPACE/deploy/Caddyfile:/etc/caddy/Caddyfile:ro" \
+            zaminflow-caddy:ci validate --config /etc/caddy/Caddyfile --adapter caddyfile
+      - name: Scan container image
+        env:
+          TRIVY_CACHE: ${{ runner.temp }}/trivy-cache
+          IMAGE_ARCHIVE: ${{ runner.temp }}/zaminflow-ci.tar
+        run: |
+          mkdir -p "$TRIVY_CACHE"
+          for image in zaminflow-api:ci zaminflow-postgres:ci zaminflow-caddy:ci; do
+            docker save "$image" -o "$IMAGE_ARCHIVE"
+            docker run --rm \
+              -v "$IMAGE_ARCHIVE:/tmp/image.tar:ro" \
+              -v "$TRIVY_CACHE:/root/.cache/" \
+              aquasec/trivy:0.76.1 image --input /tmp/image.tar \
+              --ignore-unfixed --severity HIGH,CRITICAL --exit-code 1 --quiet
+          done

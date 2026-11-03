@@ -1,11 +1,11 @@
 openapi: 3.0.3
 info:
   title: ZaminFlow API
-  version: 0.1.0-draft
-  description: Draft contract for product approval. Not an implemented API.
+  version: 1.0.0
+  description: Implemented Go/PostgreSQL API. See docs/API_CONTRACT.md and docs/FRONTEND_INTEGRATION.md for workflow and client guidance.
 servers:
   - url: https://api.zaminflow.uz/api/v1
-    description: Proposed production URL
+    description: Production API base path
   - url: http://localhost:8080/api/v1
     description: Local development
 tags:
@@ -100,12 +100,12 @@ paths:
               $ref: '#/components/schemas/SignInRequest'
       responses:
         '200':
-          description: Access token and user; refresh cookie is set
+          description: Access token and user; refresh and signed CSRF cookies are set
           headers:
             Set-Cookie:
               schema:
                 type: string
-              description: HttpOnly; Secure in production; SameSite=Lax; scoped to auth path.
+              description: Sets zf_refresh (HttpOnly, Secure in production, SameSite=Lax, scoped to auth path) and zf_csrf (signed double-submit token).
           content:
             application/json:
               schema:
@@ -205,17 +205,37 @@ paths:
       tags: [Auth]
       operationId: refreshSession
       summary: Rotate the refresh token and issue an access token
+      description: Browser requests must include an allowlisted Origin and matching zf_csrf cookie and X-CSRF-Token header.
+      parameters:
+        - name: Origin
+          in: header
+          required: true
+          schema:
+            type: string
+            format: uri
+        - name: X-CSRF-Token
+          in: header
+          required: true
+          schema:
+            type: string
       security:
         - refreshCookie: []
       responses:
         '200':
-          description: Refreshed session and rotated cookie
+          description: Refreshed session; refresh and signed CSRF cookies are set
+          headers:
+            Set-Cookie:
+              schema:
+                type: string
+              description: Sets zf_refresh and zf_csrf cookies.
           content:
             application/json:
               schema:
                 $ref: '#/components/schemas/AuthResponse'
         '401':
           $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
         '409':
           $ref: '#/components/responses/Conflict'
         '429':
@@ -379,6 +399,19 @@ paths:
       tags: [Auth]
       operationId: signOut
       summary: Revoke current refresh-token family
+      description: Requires an allowlisted Origin and matching zf_csrf cookie and X-CSRF-Token header.
+      parameters:
+        - name: Origin
+          in: header
+          required: true
+          schema:
+            type: string
+            format: uri
+        - name: X-CSRF-Token
+          in: header
+          required: true
+          schema:
+            type: string
       security:
         - bearerAuth: []
       responses:
@@ -462,18 +495,154 @@ paths:
     delete:
       tags: [Profile]
       operationId: requestAccountDeletion
-      summary: Request account deletion subject to retention rules
+      summary: Submit an account deletion request for administrator review
       security:
         - bearerAuth: []
       responses:
         '202':
-          description: Deletion request accepted for review/retention processing
+          description: Request recorded for administrator review; no account data is erased by this endpoint
+          content:
+            application/json:
+              schema:
+                type: object
+                required: [status]
+                properties:
+                  status:
+                    type: string
+                    enum: [requested]
         '401':
           $ref: '#/components/responses/Unauthorized'
         '403':
           $ref: '#/components/responses/Forbidden'
         '409':
           $ref: '#/components/responses/Conflict'
+  /me/deletion-request:
+    get:
+      tags: [Profile]
+      operationId: getOwnAccountDeletionRequest
+      summary: Get the current user's latest account deletion request and review status
+      security:
+        - bearerAuth: []
+      x-allowed-roles: [farmer, processor]
+      responses:
+        '200':
+          description: The latest request and its review status
+          content:
+            application/json:
+              schema:
+                type: object
+                required: [request]
+                properties:
+                  request:
+                    $ref: '#/components/schemas/OwnDeletionRequest'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '404':
+          $ref: '#/components/responses/NotFound'
+  /admin/deletion-requests:
+    get:
+      tags: [Admin]
+      operationId: listAccountDeletionRequests
+      summary: List account deletion requests for administrator review
+      description: Defaults to pending requests. Approval records a decision for a separate, manually governed retention process; it never erases account data or restricts marketplace activity. Recheck open transactions and applicable legal obligations before any separate manual retention action.
+      security:
+        - bearerAuth: []
+      x-allowed-roles: [admin]
+      parameters:
+        - $ref: '#/components/parameters/Page'
+        - $ref: '#/components/parameters/PageSize'
+        - name: status
+          in: query
+          description: Defaults to requested; use all to include every status.
+          schema:
+            type: string
+            enum: [requested, approved, completed, rejected, all]
+            default: requested
+      responses:
+        '200':
+          description: Paginated deletion requests and associated account profiles
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/PaginatedDeletionRequests'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+  /admin/deletion-requests/{requestId}/approve:
+    parameters:
+      - $ref: '#/components/parameters/DeletionRequestId'
+    post:
+      tags: [Admin]
+      operationId: approveAccountDeletionRequest
+      summary: Approve a deletion request for separate manual retention review
+      description: Does not erase or change account data/status or restrict marketplace activity. Requests with active orders cannot be approved at review time; recheck open transactions and applicable legal obligations before any separate manual retention action.
+      security:
+        - bearerAuth: []
+      x-allowed-roles: [admin]
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/DecisionRequest'
+      responses:
+        '200':
+          description: Request decision recorded and audited; account data remains unchanged
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/DeletionRequestResponse'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '409':
+          $ref: '#/components/responses/Conflict'
+        '422':
+          $ref: '#/components/responses/ValidationError'
+  /admin/deletion-requests/{requestId}/reject:
+    parameters:
+      - $ref: '#/components/parameters/DeletionRequestId'
+    post:
+      tags: [Admin]
+      operationId: rejectAccountDeletionRequest
+      summary: Reject an account deletion request with a reason
+      security:
+        - bearerAuth: []
+      x-allowed-roles: [admin]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/RejectRequest'
+      responses:
+        '200':
+          description: Request decision recorded and audited; account data remains unchanged
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/DeletionRequestResponse'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '409':
+          $ref: '#/components/responses/Conflict'
+        '422':
+          $ref: '#/components/responses/ValidationError'
   /admin/applications:
     get:
       tags: [Admin]
@@ -505,6 +674,8 @@ paths:
           $ref: '#/components/responses/Unauthorized'
         '403':
           $ref: '#/components/responses/Forbidden'
+        '400':
+          $ref: '#/components/responses/BadRequest'
   /admin/applications/{userId}:
     parameters:
       - $ref: '#/components/parameters/UserId'
@@ -521,13 +692,23 @@ paths:
           content:
             application/json:
               schema:
-                $ref: '#/components/schemas/User'
+                type: object
+                required: [user, reviews]
+                properties:
+                  user:
+                    $ref: '#/components/schemas/User'
+                  reviews:
+                    type: array
+                    items:
+                      $ref: '#/components/schemas/AccountReview'
         '401':
           $ref: '#/components/responses/Unauthorized'
         '403':
           $ref: '#/components/responses/Forbidden'
         '404':
           $ref: '#/components/responses/NotFound'
+        '400':
+          $ref: '#/components/responses/BadRequest'
   /admin/applications/{userId}/approve:
     parameters:
       - $ref: '#/components/parameters/UserId'
@@ -679,6 +860,13 @@ paths:
           schema:
             type: string
             format: uuid
+        - name: targetType
+          in: query
+          schema:
+            type: string
+            maxLength: 40
+        - $ref: '#/components/parameters/From'
+        - $ref: '#/components/parameters/To'
       responses:
         '200':
           description: Paginated audit events
@@ -713,6 +901,11 @@ paths:
           schema:
             type: integer
             minimum: 1
+        - name: sort
+          in: query
+          schema:
+            type: string
+            enum: [newest, oldest, price_asc, price_desc]
       responses:
         '200':
           description: Listings visible to caller
@@ -786,6 +979,8 @@ paths:
           $ref: '#/components/responses/Forbidden'
         '404':
           $ref: '#/components/responses/NotFound'
+        '400':
+          $ref: '#/components/responses/BadRequest'
     patch:
       tags: [Listings]
       operationId: updateListing
@@ -817,6 +1012,8 @@ paths:
           $ref: '#/components/responses/Conflict'
         '422':
           $ref: '#/components/responses/ValidationError'
+        '400':
+          $ref: '#/components/responses/BadRequest'
     delete:
       tags: [Listings]
       operationId: archiveListing
@@ -836,6 +1033,8 @@ paths:
           $ref: '#/components/responses/NotFound'
         '409':
           $ref: '#/components/responses/Conflict'
+        '400':
+          $ref: '#/components/responses/BadRequest'
   /orders:
     get:
       tags: [Orders]
@@ -863,6 +1062,8 @@ paths:
           $ref: '#/components/responses/Unauthorized'
         '403':
           $ref: '#/components/responses/Forbidden'
+        '400':
+          $ref: '#/components/responses/BadRequest'
     post:
       tags: [Orders]
       operationId: createOrder
@@ -938,6 +1139,11 @@ paths:
         - bearerAuth: []
       x-allowed-roles: [farmer]
       x-required-account-status: approved
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/DecisionRequest'
       responses:
         '200':
           description: Order accepted
@@ -1071,6 +1277,15 @@ paths:
       responses:
         '201':
           description: Dispute recorded
+          content:
+            application/json:
+              schema:
+                type: object
+                required: [status]
+                properties:
+                  status:
+                    type: string
+                    enum: [disputed]
         '401':
           $ref: '#/components/responses/Unauthorized'
         '403':
@@ -1101,6 +1316,15 @@ paths:
       responses:
         '201':
           description: Quality report recorded
+          content:
+            application/json:
+              schema:
+                type: object
+                required: [status]
+                properties:
+                  status:
+                    type: string
+                    enum: [recorded]
         '401':
           $ref: '#/components/responses/Unauthorized'
         '403':
@@ -1123,6 +1347,7 @@ paths:
       parameters:
         - $ref: '#/components/parameters/From'
         - $ref: '#/components/parameters/To'
+        - $ref: '#/components/parameters/DashboardPeriod'
       responses:
         '200':
           description: Database-computed farmer KPIs, charts, and tables
@@ -1134,6 +1359,8 @@ paths:
           $ref: '#/components/responses/Unauthorized'
         '403':
           $ref: '#/components/responses/Forbidden'
+        '400':
+          $ref: '#/components/responses/BadRequest'
   /dashboards/processor:
     get:
       tags: [Dashboards]
@@ -1146,6 +1373,7 @@ paths:
       parameters:
         - $ref: '#/components/parameters/From'
         - $ref: '#/components/parameters/To'
+        - $ref: '#/components/parameters/DashboardPeriod'
       responses:
         '200':
           description: Database-computed processor KPIs, charts, and tables
@@ -1157,6 +1385,8 @@ paths:
           $ref: '#/components/responses/Unauthorized'
         '403':
           $ref: '#/components/responses/Forbidden'
+        '400':
+          $ref: '#/components/responses/BadRequest'
   /dashboards/admin:
     get:
       tags: [Dashboards]
@@ -1165,6 +1395,10 @@ paths:
       security:
         - bearerAuth: []
       x-allowed-roles: [admin]
+      parameters:
+        - $ref: '#/components/parameters/From'
+        - $ref: '#/components/parameters/To'
+        - $ref: '#/components/parameters/DashboardPeriod'
       responses:
         '200':
           description: Database-computed admin KPIs, charts, and tables
@@ -1176,11 +1410,16 @@ paths:
           $ref: '#/components/responses/Unauthorized'
         '403':
           $ref: '#/components/responses/Forbidden'
+        '400':
+          $ref: '#/components/responses/BadRequest'
   /healthz:
     get:
       tags: [Health]
       operationId: getHealth
       summary: Liveness probe
+      servers:
+        - url: https://api.zaminflow.uz
+        - url: http://localhost:8080
       responses:
         '200':
           description: Process is live
@@ -1197,6 +1436,9 @@ paths:
       tags: [Health]
       operationId: getReadiness
       summary: Readiness probe including database connectivity
+      servers:
+        - url: https://api.zaminflow.uz
+        - url: http://localhost:8080
       responses:
         '200':
           description: Dependencies ready
@@ -1208,6 +1450,9 @@ paths:
       operationId: getMetrics
       summary: Expose Prometheus metrics to internal monitoring only
       description: This endpoint must not be publicly exposed; production network access is restricted.
+      servers:
+        - url: https://api.zaminflow.uz
+        - url: http://localhost:8080
       security:
         - bearerAuth: []
       responses:
@@ -1254,6 +1499,13 @@ components:
       schema:
         type: string
         format: uuid
+    DeletionRequestId:
+      name: requestId
+      in: path
+      required: true
+      schema:
+        type: string
+        format: uuid
     OrderId:
       name: orderId
       in: path
@@ -1273,6 +1525,14 @@ components:
       schema:
         type: string
         format: date-time
+    DashboardPeriod:
+      name: period
+      in: query
+      description: Defaults to 30d; ignored when both from and to are supplied.
+      schema:
+        type: string
+        enum: [7d, 30d, 90d, 12m]
+        default: 30d
   responses:
     BadRequest:
       description: Malformed request
@@ -1429,13 +1689,20 @@ components:
         createdAt:
           type: string
           format: date-time
+        updatedAt:
+          type: string
+          format: date-time
     Region:
       type: object
-      required: [code, name]
+      required: [code, nameUz, nameRu, nameEn]
       properties:
         code:
           type: string
-        name:
+        nameUz:
+          type: string
+        nameRu:
+          type: string
+        nameEn:
           type: string
     ListingInput:
       type: object
@@ -1474,8 +1741,11 @@ components:
               format: uuid
             status:
               type: string
-              enum: [draft, active, paused, sold_out, expired]
+              enum: [draft, active, paused, sold_out, expired, archived]
             createdAt:
+              type: string
+              format: date-time
+            updatedAt:
               type: string
               format: date-time
     OrderInput:
@@ -1500,7 +1770,7 @@ components:
       enum: [placed, accepted, rejected, cancelled, ready_for_pickup, picked_up, delivered, completed, disputed]
     Order:
       type: object
-      required: [id, listingId, farmerId, processorId, liters, pricePerLiterUzs, totalUzs, status, createdAt]
+      required: [id, listingId, farmerId, processorId, liters, pricePerLiterUzs, totalUzs, status, expectedPickupAt, createdAt, updatedAt]
       properties:
         id:
           type: string
@@ -1525,6 +1795,35 @@ components:
         expectedPickupAt:
           type: string
           format: date-time
+        note:
+          type: string
+        qualityOutcome:
+          type: string
+          enum: [accepted, rejected]
+        createdAt:
+          type: string
+          format: date-time
+        updatedAt:
+          type: string
+          format: date-time
+        completedAt:
+          type: string
+          format: date-time
+        history:
+          type: array
+          items:
+            $ref: '#/components/schemas/OrderHistoryItem'
+    OrderHistoryItem:
+      type: object
+      required: [status, actorId, createdAt]
+      properties:
+        status:
+          $ref: '#/components/schemas/OrderStatus'
+        actorId:
+          type: string
+          format: uuid
+        note:
+          type: string
         createdAt:
           type: string
           format: date-time
@@ -1558,6 +1857,63 @@ components:
               type: array
               items:
                 $ref: '#/components/schemas/User'
+    AccountDeletionRequest:
+      type: object
+      required: [id, user, status, requestedAt]
+      properties:
+        id:
+          type: string
+          format: uuid
+        user:
+          $ref: '#/components/schemas/User'
+        status:
+          type: string
+          enum: [requested, approved, completed, rejected]
+        requestedAt:
+          type: string
+          format: date-time
+        reviewedBy:
+          type: string
+          format: uuid
+        reviewedAt:
+          type: string
+          format: date-time
+        reviewReason:
+          type: string
+    OwnDeletionRequest:
+      type: object
+      required: [id, status, requestedAt]
+      properties:
+        id:
+          type: string
+          format: uuid
+        status:
+          type: string
+          enum: [requested, approved, completed, rejected]
+        requestedAt:
+          type: string
+          format: date-time
+        reviewedAt:
+          type: string
+          format: date-time
+        reason:
+          type: string
+    DeletionRequestResponse:
+      type: object
+      required: [request]
+      properties:
+        request:
+          $ref: '#/components/schemas/AccountDeletionRequest'
+    PaginatedDeletionRequests:
+      allOf:
+        - $ref: '#/components/schemas/Pagination'
+        - type: object
+          required: [items]
+          properties:
+            items:
+              type: array
+              items:
+                $ref: '#/components/schemas/AccountDeletionRequest'
     PaginatedListings:
       allOf:
         - $ref: '#/components/schemas/Pagination'
@@ -1740,14 +2096,25 @@ components:
           type: string
           maxLength: 2000
     DecisionResponse:
+      $ref: '#/components/schemas/User'
+    AccountReview:
       type: object
-      required: [user, review]
+      required: [id, reviewerId, decision, createdAt]
       properties:
-        user:
-          $ref: '#/components/schemas/User'
-        review:
-          type: object
-          additionalProperties: true
+        id:
+          type: string
+          format: uuid
+        reviewerId:
+          type: string
+          format: uuid
+        decision:
+          type: string
+          enum: [approved, rejected, suspended, reinstated, resubmitted]
+        reason:
+          type: string
+        createdAt:
+          type: string
+          format: date-time
     Dashboard:
       type: object
       required: [period, kpis, charts, tables]

@@ -1,6 +1,14 @@
-# ZaminFlow Backend: Step 0 Design Proposal
+# ZaminFlow Backend: Approved Design and Handoff
 
-**Status: draft for product approval.** No backend implementation is included. Please approve or amend the domain model, endpoint inventory, account-approval rules, and dashboard metrics before implementation begins.
+**Status: The user approved this design before implementation.** This report is the product/domain baseline; see [API_CONTRACT.md](./API_CONTRACT.md), [openapi.yaml](./openapi.yaml), and the implementation status below for the as-built behavior.
+
+## Implementation status
+
+- **Implemented:** Go/PostgreSQL foundation, migrations, auth and account approval, email outbox, admin MFA, audit events, listings, transactional order reservations/transitions, quality/dispute records, dashboards, Prometheus metrics, production Compose/Caddy, and backup/restore scripts.
+- **Consumer materials:** OpenAPI, Swagger UI in the local Compose profile, API contract, and frontend integration guide are maintained in this repository. No frontend or generated application client is included.
+- **Operational follow-up:** Account-deletion requests have an MFA-protected admin review queue with audited approve/reject decisions. Approval does not erase, anonymize, suspend, or restrict an account. Before any separate manual retention action, recheck open transactions and applicable legal obligations; define and approve the legal retention/anonymization workflow first.
+- **Known scope limits:** Disputes are recorded but have no automated resolution endpoint. Quality measurement keys are caller-supplied numeric values rather than a fixed taxonomy. Region labels are seeded in the migration and require an operator-owned update process.
+- **Verification:** PostgreSQL integration tests cover the principal auth, approval, ordering, dashboard, and outbox flows. See [TESTING.md](./TESTING.md) and [DEPLOYMENT.md](./DEPLOYMENT.md) for executable checks and recovery procedures.
 
 ## Product and actors
 
@@ -25,7 +33,7 @@ The only roles are `farmer`, `processor`, and `admin`. Public sign-up permits on
 
 `accepted | ready_for_pickup | picked_up | delivered -> disputed`
 
-The processor may cancel only before farmer acceptance; the farmer may reject a placed order; either party may open a dispute before completion. Farmer records `ready_for_pickup`, `picked_up`, and `delivered`; processor records `completed` after receipt. A dispute is terminal in the initial release and requires admin handling outside the API; automated resolution is not proposed. Each transition appends an immutable history record. Cancellation and rejection release reserved listing quantity. **Please confirm whether this is the desired operational workflow**, especially who records pickup and delivery.
+The processor may cancel only before farmer acceptance; the farmer may reject a placed order; either party may open a dispute before completion. Farmer records `ready_for_pickup`, `picked_up`, and `delivered`; processor records `completed` after receipt. A dispute is terminal in the initial release and requires admin handling outside the API; automated resolution is not included. Each transition appends an immutable history record. Cancellation and rejection release reserved listing quantity. Product operations should confirm who records pickup and delivery.
 
 ## Proposed resources and ownership
 
@@ -35,7 +43,7 @@ The processor may cancel only before farmer acceptance; the farmer may reject a 
 | Account review | Applicant, decision, reason, reviewer, timestamp, attempt number | Admin-only read/write; append-only decision history. |
 | Session / refresh-token family | Hashed rotating refresh token, expiry, revocation/reuse metadata | Private to the authenticated user; admin suspension revokes every session. |
 | Region | Stable code, Uzbek/Russian/English labels, active flag | Public read-only reference data, seeded from a maintained source. |
-| Milk listing | Farmer, region, available liters, fat percentage, price per liter in UZS, availability dates, status | Farmer creates/updates own listing. `draft -> active -> paused | sold_out | expired`; only active listings are orderable. |
+| Milk listing | Farmer, region, available liters, fat percentage, price per liter in UZS, availability dates, status | Farmer creates/updates own listing. Supported statuses include `draft`, `active`, `paused`, `sold_out`, `expired`, and `archived`; only active listings are orderable. |
 | Order | Listing, farmer, processor, liters, locked unit price, total UZS, status, requested pickup date, notes | Readable only by its two parties and admins; state transitions are actor-restricted. Price/quantity terms are snapshots at order placement. |
 | Order status history | Order, old/new status, actor, timestamp, optional note | Immutable; visible to parties and admins. |
 | Quality report | Order or listing, measurement values and units, reporter, timestamp | Proposed for recording quality at fulfillment; visibility limited to order parties and admins. Exact fields need approval. |
@@ -71,7 +79,7 @@ All routes use `/api/v1`. UUIDs identify resources. All trading routes require a
 | `POST /auth/email-verification/request` | Public | Send or resend verification email without account enumeration. |
 | `POST /auth/email-verification/confirm` | Public | Verify a one-time email token. |
 | `POST /auth/sign-in` | Public | Authenticate with generic errors; admins must provide TOTP or recovery code. |
-| `POST /auth/refresh` | Refresh cookie / documented native-client mode | Rotate refresh token; detect reuse and revoke family. |
+| `POST /auth/refresh` | Refresh cookie and browser CSRF checks | Rotate refresh token; detect reuse and revoke family. |
 | `POST /auth/sign-out` | Authenticated | Revoke current refresh-token family. |
 | `POST /auth/password-reset/request` | Public | Request reset without revealing account existence. |
 | `POST /auth/password-reset/confirm` | Public | Consume one-time reset token and set a new password. |
@@ -82,6 +90,7 @@ All routes use `/api/v1`. UUIDs identify resources. All trading routes require a
 | `PATCH /me` | Authenticated | Edit allowed own-profile fields; rejected applicants may correct details. |
 | `POST /me/resubmit` | Rejected farmer/processor | Return account to pending and append a review attempt. |
 | `DELETE /me` | Authenticated | Request account deletion, subject to order/audit retention rules. |
+| `GET /me/deletion-request` | Farmer/processor | Read own latest deletion request and admin decision. |
 | `POST /auth/totp/setup` | Admin, authenticated | Start mandatory admin TOTP enrollment; return secret once. |
 | `POST /auth/totp/confirm` | Admin, authenticated | Confirm TOTP and issue one-time recovery codes. |
 | `POST /auth/totp/recovery-codes/rotate` | Admin, MFA-authenticated | Replace recovery codes. |
@@ -90,12 +99,15 @@ All routes use `/api/v1`. UUIDs identify resources. All trading routes require a
 
 | Method and path | Access | Purpose |
 |---|---|---|
+| `GET /admin/deletion-requests` | Admin | Paginated request queue with status filtering and account context. |
+| `POST /admin/deletion-requests/{requestId}/approve` | Admin | Record approval for separate manual retention review; does not erase account data. |
+| `POST /admin/deletion-requests/{requestId}/reject` | Admin | Reject with required reason and audit the decision. |
 | `GET /admin/applications` | Admin | Paginated/filterable/sortable verified pending applicants. |
 | `GET /admin/applications/{userId}` | Admin | Applicant details and prior review attempts. |
 | `POST /admin/applications/{userId}/approve` | Admin | Approve pending applicant. |
 | `POST /admin/applications/{userId}/reject` | Admin | Reject with required reason. |
 | `POST /admin/users/{userId}/suspend` | Admin | Suspend user with required reason and revoke all sessions. |
-| `POST /admin/users/{userId}/reinstate` | Admin | Reinstate a suspended user; proposed target status is `approved`. |
+| `POST /admin/users/{userId}/reinstate` | Admin | Reinstate a suspended user to `approved`. |
 | `GET /admin/audit-events` | Admin | Filterable audit trail. |
 | `GET /dashboards/admin` | Admin | Admin dashboard aggregation. |
 
@@ -124,7 +136,7 @@ All routes use `/api/v1`. UUIDs identify resources. All trading routes require a
 
 ## Dashboard KPI and table definitions
 
-Every dashboard response is computed from database rows, filtered to the authenticated user's scope and selected period. Proposed default period: trailing 30 days, UTC; supported periods: `7d`, `30d`, `90d`, `12m`, and `custom` with validated UTC `from`/`to`. All charts use UTC day buckets for periods up to 90 days and month buckets for 12 months. Empty datasets return zero-valued KPIs and empty arrays.
+Every dashboard response is computed from database rows, filtered to the authenticated user's scope and selected period. The default period is trailing 30 days, UTC; supported presets are `7d`, `30d`, `90d`, and `12m`, or a custom RFC 3339 `from`/`to` range up to 366 days. Charts use day buckets through 90 days and month buckets for longer periods. Empty datasets return zero/null values and empty arrays.
 
 | Dashboard | KPI / chart / table | Proposed definition and source |
 |---|---|---|
@@ -152,7 +164,7 @@ Every dashboard response is computed from database rows, filtered to the authent
 | Admin | Orders by status | Grouped order counts at request time; `orders`. |
 | Admin | Recent security/audit events | Latest 20 relevant audit events with actor, action, target, request ID, and timestamp; redact sensitive metadata. |
 
-Dashboard responses should include `period`, KPI objects with `value`, `unit`, and where applicable numerator/denominator, chart series, and bounded table rows. The design avoids follow-up calls for dashboard content. Please approve these definitions and the proposed quality-report fields.
+Dashboard responses include `period`, KPI values, chart series, and bounded table rows. The design avoids follow-up calls for dashboard content. Verify product-specific KPI meaning and quality-report taxonomy before external reporting.
 
 ## Approval workflow and security decisions
 
@@ -163,7 +175,7 @@ Dashboard responses should include `period`, KPI objects with `value`, `unit`, a
 - Reject/suspend require a reason. A rejected user may correct profile data and resubmit; each attempt is retained. A suspended user cannot sign in; all refresh sessions are revoked in the same transaction.
 - Admins cannot change their own status. Suspending or deleting the last active admin is rejected transactionally. Admins use mandatory TOTP with one-time hashed recovery codes, stricter rate limits, and audit records for each administrative action. `cmd/admin` provisions an admin in an enrollment-required state; the first password sign-in grants an enrollment-only session for TOTP setup, while all admin operations remain blocked until TOTP confirmation.
 - Proposed access JWT lifetime is 15 minutes. Refresh tokens rotate on each use, are stored hashed, and are grouped into families; reuse of a revoked token revokes the family. Access tokens use a pinned algorithm and validate issuer, audience, expiry, and issued-at.
-- Proposed web transport: access JWT in response body, sent via `Authorization: Bearer`; refresh token in `HttpOnly; Secure; SameSite=Lax` cookie scoped to `/api/v1/auth`; refresh requires exact allowed `Origin` plus a custom CSRF header. Native-client body transport is disabled unless explicitly enabled by deployment configuration.
+- Web transport: access JWT in response body, sent via `Authorization: Bearer`; refresh token in `HttpOnly; SameSite=Lax` cookie scoped to `/api/v1/auth` and Secure in production; refresh/sign-out require exact allowed `Origin`, signed CSRF cookie, and matching custom header. Native refresh-token body transport is not implemented.
 - Passwords: minimum 12 characters, maximum 128, reject common passwords; hash using Argon2id with parameters benchmarked and documented. Uzbek phone format is `+998` plus nine digits and is normalized before storage. STIR format and region enumeration source need product confirmation.
 - All list endpoints use `page` (1-based), `pageSize` (default 20, max 100), `total`, `items`; filters and sorts are documented per resource. IDs are UUIDs; JSON fields are camelCase; timestamps are RFC 3339 UTC; money is integer UZS; enum values are lowercase snake_case.
 - Error envelope: `{ "error": { "code": "...", "message": "...", "requestId": "...", "fieldErrors": [{ "field": "...", "code": "...", "message": "..." }] } }`. Messages are safe for clients; codes are stable and localization-ready.
@@ -176,7 +188,7 @@ Dashboard responses should include `period`, KPI objects with `value`, `unit`, a
 4. Farmer/company name, full legal name, Uzbek phone, region, and STIR are required at sign-up. Document upload is excluded for now.
 5. Admin reinstatement returns a suspended account to `approved`; restoring a previously rejected user requires the application/resubmission flow.
 6. A dispute is recorded and visible but resolved manually by admins outside the initial API.
-7. Account deletion is a request rather than immediate hard deletion where orders, reviews, or audit retention obligations exist; final retention/anonymization policy needs legal review.
+7. Account deletion is a request rather than immediate hard deletion where orders, reviews, or audit retention obligations exist. Admin review records a decision, but any actual deletion/anonymization requires a separately approved legal retention policy and manual process.
 8. Market-price comparison means completed platform orders in the same time window, weighted by liters. It is not an external Uzbekistan market benchmark.
 9. Quality acceptance requires explicit recorded outcome values and denominator rules; proposed definition excludes completed orders without a quality outcome.
 10. CORS production allowlist includes `https://www.zaminflow.uz` and `https://zaminflow.uz`; local development includes localhost ports 3000 and 5173. Cookie Domain and API hostname depend on final deployment DNS.
@@ -188,17 +200,15 @@ Dashboard responses should include `period`, KPI objects with `value`, `unit`, a
 - Real-time chat, push notifications, ratings/reviews, bidding, and negotiation workflows.
 - Document storage/uploads for applicants.
 - Automated dispute adjudication and external market-price feeds.
-- Mobile client, frontend/UI, and generated client implementation until the API contract is approved.
+- Frontend/UI, native client, and generated application client implementation are outside this backend delivery.
 
-## Phase plan after approval
+## Original delivery plan and handoff status
 
-1. **Foundation:** Go module and pinned toolchain, config, structured logging, PostgreSQL, migrations, Docker/Compose, health/readiness endpoints, CI skeleton.
-2. **Auth and approval:** registration, email verification, password reset/change, sign-in, MFA, rotating sessions, status gates, admin CLI, review workflow, transactional audit/outbox notifications.
-3. **Domain and dashboards:** approved schema and transitions, listings/orders/quality, ownership checks, pagination/filtering/sorting, and all three database-backed dashboards.
-4. **API consumer readiness:** finalize and validate OpenAPI, generated TypeScript client, Bruno/Postman collection, Swagger UI, frontend integration guide.
-5. **Hardening and verification:** endpoint-by-endpoint security review, real-Postgres integration and black-box E2E tests, race/coverage, migrations up/down, fuzz/contract tests, load test, security and image scanning.
-6. **Deployment and handoff:** production Compose/reverse proxy, backup and tested restore, deployment docs, final verification report and known risks.
+1. **Foundation:** Complete; Go service, configuration, logging, PostgreSQL migrations, Compose, health/readiness, and CI are present.
+2. **Auth and approval:** Complete for the documented account flows, MFA, rotating sessions, status gates, admin CLI, review history, audit, and mail outbox.
+3. **Domain and dashboards:** Complete for listings, transactional inventory/order lifecycle, quality/disputes, ownership checks, and farmer/processor/admin dashboards.
+4. **API consumer readiness:** OpenAPI, local Swagger UI, API contract, and frontend integration guide are present. Generated TypeScript client generation and a dedicated Bruno/Postman collection are not part of this backend repository.
+5. **Hardening and verification:** PostgreSQL integration tests, race-enabled CI, query validation, CSRF checks, and dependency/image pinning are configured. Fuzz, realistic marketplace load, and external infrastructure scans remain release-environment checks and must be run before production launch.
+6. **Deployment and handoff:** Production Compose/Caddy, backup/restore scripts, and operational documentation are present. Validate these procedures with the intended production host, DNS, SMTP, secret store, and off-site backup target before launch.
 
-## Approval requested
-
-Please approve or amend the domain and order state machine, endpoint inventory, account approval and admin MFA rules, dashboard KPI definitions, and the assumptions above. Implementation remains paused until approval.
+The approved design is implemented to the scope above. Legal retention/anonymization and external deployment validation remain explicit operational/product decisions; they must not be replaced with automatic data deletion or assumed production success.

@@ -1,6 +1,10 @@
 services:
   postgres:
-    image: postgres:16.10-alpine3.21
+    image: zaminflow-postgres:16
+    pull_policy: build
+    build:
+      context: .
+      dockerfile: deploy/Postgres.Dockerfile
     environment:
       POSTGRES_DB: ${POSTGRES_DB:-zaminflow}
       POSTGRES_USER: ${POSTGRES_USER:-zaminflow}
@@ -20,11 +24,16 @@ services:
     build:
       context: .
       dockerfile: Dockerfile
-    entrypoint: ["/app/migrate"]
+    command: ["/app/migrate"]
     environment:
       APP_ENV: ${APP_ENV:-development}
       DATABASE_URL: postgres://${POSTGRES_USER:-zaminflow}:${POSTGRES_PASSWORD:?Set POSTGRES_PASSWORD in .env}@postgres:5432/${POSTGRES_DB:-zaminflow}?sslmode=disable
       MIGRATIONS_DIR: /app/migrations
+      APP_SECRET: ${APP_SECRET:?Set APP_SECRET in .env}
+      METRICS_TOKEN: ${METRICS_TOKEN:-}
+      SMTP_HOST: mailpit
+      SMTP_PORT: 1025
+      MAIL_FROM: ${MAIL_FROM:-ZaminFlow <noreply@zaminflow.uz>}
     depends_on:
       postgres:
         condition: service_healthy
@@ -39,17 +48,52 @@ services:
     environment:
       DATABASE_URL: postgres://${POSTGRES_USER:-zaminflow}:${POSTGRES_PASSWORD:?Set POSTGRES_PASSWORD in .env}@postgres:5432/${POSTGRES_DB:-zaminflow}?sslmode=disable
       MIGRATIONS_DIR: /app/migrations
+      APP_SECRET: ${APP_SECRET:?Set APP_SECRET in .env}
+      METRICS_TOKEN: ${METRICS_TOKEN:-}
+      SMTP_HOST: mailpit
+      SMTP_PORT: 1025
+      SMTP_USER: ${SMTP_USER:-}
+      SMTP_PASSWORD: ${SMTP_PASSWORD:-}
+      SMTP_REQUIRE_TLS: ${SMTP_REQUIRE_TLS:-false}
+      MAIL_FROM: ${MAIL_FROM:-ZaminFlow <noreply@zaminflow.uz>}
+      WEB_BASE_URL: ${WEB_BASE_URL:-http://localhost:3000}
+      REFRESH_COOKIE_DOMAIN: ${REFRESH_COOKIE_DOMAIN:-}
     ports:
       - "${API_PORT:-8080}:8080"
     depends_on:
       migrate:
         condition: service_completed_successfully
+      mailpit:
+        condition: service_started
     healthcheck:
       test: ["CMD", "wget", "-q", "--spider", "http://127.0.0.1:8080/healthz"]
       interval: 10s
       timeout: 3s
       retries: 5
     restart: unless-stopped
+
+  admin:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    command: ["/app/admin", "create"]
+    env_file:
+      - .env
+    environment:
+      APP_ENV: ${APP_ENV:-development}
+      DATABASE_URL: postgres://${POSTGRES_USER:-zaminflow}:${POSTGRES_PASSWORD:?Set POSTGRES_PASSWORD in .env}@postgres:5432/${POSTGRES_DB:-zaminflow}?sslmode=disable
+      APP_SECRET: ${APP_SECRET:?Set APP_SECRET in .env}
+      METRICS_TOKEN: ${METRICS_TOKEN:-}
+      ADMIN_EMAIL: ${ADMIN_EMAIL:-}
+      ADMIN_FULL_NAME: ${ADMIN_FULL_NAME:-}
+      ADMIN_PASSWORD: ${ADMIN_PASSWORD:-}
+    depends_on:
+      postgres:
+        condition: service_healthy
+      migrate:
+        condition: service_completed_successfully
+    profiles: ["admin-tools"]
+    restart: "no"
 
   mailpit:
     image: axllent/mailpit:v1.27.8

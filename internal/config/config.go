@@ -3,6 +3,8 @@ package config
 import (
 	"fmt"
 	"log/slog"
+	"net"
+	"net/mail"
 	"net/url"
 	"os"
 	"strconv"
@@ -15,6 +17,8 @@ type Config struct {
 	HTTPAddr            string
 	LogLevel            slog.Level
 	DatabaseURL         string
+	AppSecret           string
+	MetricsToken        string
 	MigrationsDir       string
 	DBMaxConns          int32
 	DBMinConns          int32
@@ -27,13 +31,44 @@ type Config struct {
 	HTTPRequestTimeout  time.Duration
 	HTTPMaxBodyBytes    int64
 	CORSAllowedOrigins  []string
+	SMTPHost            string
+	SMTPPort            string
+	SMTPUser            string
+	SMTPPassword        string
+	SMTPRequireTLS      bool
+	MailFrom            string
+	WebBaseURL          string
+	RefreshCookieDomain string
 }
 
 func Load() (Config, error) {
+	appEnv := envOr("APP_ENV", "development")
+	appSecret, err := SecretValue("APP_SECRET", appEnv)
+	if err != nil {
+		return Config{}, err
+	}
+	metricsToken, err := SecretValue("METRICS_TOKEN", appEnv)
+	if err != nil {
+		return Config{}, err
+	}
+	databaseURL, err := configuredDatabaseURL(appEnv)
+	if err != nil {
+		return Config{}, err
+	}
+	smtpUser, err := SecretValue("SMTP_USER", appEnv)
+	if err != nil {
+		return Config{}, err
+	}
+	smtpPassword, err := SecretValue("SMTP_PASSWORD", appEnv)
+	if err != nil {
+		return Config{}, err
+	}
 	cfg := Config{
-		AppEnv:              envOr("APP_ENV", "development"),
+		AppEnv:              appEnv,
 		HTTPAddr:            envOr("HTTP_ADDR", ":8080"),
-		DatabaseURL:         strings.TrimSpace(os.Getenv("DATABASE_URL")),
+		DatabaseURL:         databaseURL,
+		AppSecret:           strings.TrimSpace(appSecret),
+		MetricsToken:        strings.TrimSpace(metricsToken),
 		MigrationsDir:       envOr("MIGRATIONS_DIR", "migrations"),
 		DBMaxConns:          20,
 		DBMinConns:          2,
@@ -45,20 +80,38 @@ func Load() (Config, error) {
 		HTTPShutdownTimeout: 10 * time.Second,
 		HTTPRequestTimeout:  10 * time.Second,
 		HTTPMaxBodyBytes:    1 << 20,
+		SMTPHost:            envOr("SMTP_HOST", "mailpit"),
+		SMTPPort:            envOr("SMTP_PORT", "1025"),
+		SMTPUser:            strings.TrimSpace(smtpUser),
+		SMTPPassword:        smtpPassword,
+		SMTPRequireTLS:      false,
+		MailFrom:            envOr("MAIL_FROM", "ZaminFlow <noreply@zaminflow.uz>"),
+		WebBaseURL:          envOr("WEB_BASE_URL", "http://localhost:3000"),
+		RefreshCookieDomain: strings.TrimSpace(os.Getenv("REFRESH_COOKIE_DOMAIN")),
 	}
 	switch cfg.AppEnv {
 	case "development", "test", "production":
 	default:
 		return Config{}, fmt.Errorf("APP_ENV must be development, test, or production")
 	}
+	smtpRequireTLS, err := envBool("SMTP_REQUIRE_TLS", cfg.AppEnv == "production")
+	if err != nil {
+		return Config{}, err
+	}
+	cfg.SMTPRequireTLS = smtpRequireTLS
 	if cfg.DatabaseURL == "" {
 		return Config{}, fmt.Errorf("DATABASE_URL is required")
+	}
+	if len(cfg.AppSecret) < 32 {
+		return Config{}, fmt.Errorf("APP_SECRET must contain at least 32 characters")
+	}
+	if cfg.AppEnv == "production" && cfg.AppSecret == "replace-this-with-a-random-secret-at-least-32-characters" {
+		return Config{}, fmt.Errorf("APP_SECRET must be changed from the development placeholder in production")
 	}
 	if err := validateDatabaseURL(cfg.DatabaseURL); err != nil {
 		return Config{}, err
 	}
 
-	var err error
 	if cfg.DBMaxConns, err = envInt32("DB_MAX_CONNS", int32(cfg.DBMaxConns)); err != nil {
 		return Config{}, err
 	}
@@ -73,6 +126,16 @@ func Load() (Config, error) {
 	}
 	if cfg.DBMaxConnLifetime <= 0 {
 		return Config{}, fmt.Errorf("DB_MAX_CONN_LIFETIME must be positive")
+	}
+	smtpPort, err := strconv.Atoi(cfg.SMTPPort)
+	if err != nil || smtpPort < 1 || smtpPort > 65535 {
+		return Config{}, fmt.Errorf("SMTP_PORT must be an integer from 1 to 65535")
+	}
+	if (cfg.SMTPUser == "") != (cfg.SMTPPassword == "") {
+		return Config{}, fmt.Errorf("SMTP_USER and SMTP_PASSWORD must either both be set or both be empty")
+	}
+	if _, err := mail.ParseAddress(cfg.MailFrom); err != nil {
+		return Config{}, fmt.Errorf("MAIL_FROM must be a valid email address: %w", err)
 	}
 	if cfg.DBConnectTimeout, err = envDuration("DB_CONNECT_TIMEOUT", cfg.DBConnectTimeout); err != nil {
 		return Config{}, err
@@ -120,6 +183,9 @@ func Load() (Config, error) {
 		return Config{}, err
 	}
 	if cfg.AppEnv == "production" {
+		if len(cfg.MetricsToken) < 32 {
+			return Config{}, fmt.Errorf("METRICS_TOKEN must contain at least 32 characters in production")
+		}
 		for _, origin := range cfg.CORSAllowedOrigins {
 			parsed, parseErr := url.Parse(origin)
 			if parseErr != nil {
@@ -129,8 +195,88 @@ func Load() (Config, error) {
 				return Config{}, fmt.Errorf("production CORS origin %q must use https", origin)
 			}
 		}
+		if !cfg.SMTPRequireTLS {
+			return Config{}, fmt.Errorf("SMTP_REQUIRE_TLS must be enabled in production")
+		}
 	}
+	webURL, err := url.Parse(cfg.WebBaseURL)
+	if err != nil || (webURL.Scheme != "http" && webURL.Scheme != "https") ||
+		webURL.Host == "" || webURL.User != nil || webURL.RawQuery != "" || webURL.Fragment != "" {
+		return Config{}, fmt.Errorf("WEB_BASE_URL must be an absolute http or https URL without credentials, query, or fragment")
+	}
+	if cfg.AppEnv == "production" && webURL.Scheme != "https" {
+		return Config{}, fmt.Errorf("WEB_BASE_URL must use https in production")
+	}
+	cfg.WebBaseURL = strings.TrimRight(cfg.WebBaseURL, "/")
 	return cfg, nil
+}
+
+func SecretValue(name, appEnv string) (string, error) {
+	filePath := strings.TrimSpace(os.Getenv(name + "_FILE"))
+	plainValue, plainSet := os.LookupEnv(name)
+	if filePath != "" {
+		if plainSet && strings.TrimSpace(plainValue) != "" {
+			return "", fmt.Errorf("%s and %s_FILE must not both be set", name, name+"_FILE")
+		}
+		value, err := os.ReadFile(filePath)
+		if err != nil {
+			return "", fmt.Errorf("read %s_FILE: %w", name, err)
+		}
+		secret := strings.TrimRight(string(value), "\r\n")
+		if strings.TrimSpace(secret) == "" {
+			return "", fmt.Errorf("%s_FILE must not be empty", name)
+		}
+		return secret, nil
+	}
+	if appEnv == "production" && plainSet && strings.TrimSpace(plainValue) != "" {
+		return "", fmt.Errorf("%s must be provided through %s_FILE in production", name, name)
+	}
+	if appEnv != "development" && appEnv != "test" && appEnv != "production" {
+		return "", fmt.Errorf("APP_ENV must be development, test, or production")
+	}
+	if appEnv == "production" {
+		return "", nil
+	}
+	return plainValue, nil
+}
+
+func configuredDatabaseURL(appEnv string) (string, error) {
+	databaseURL := strings.TrimSpace(os.Getenv("DATABASE_URL"))
+	if appEnv == "production" && databaseURL != "" {
+		return "", fmt.Errorf("DATABASE_URL must not be set in production; configure DB_HOST, DB_PORT, DB_NAME, DB_USER_FILE, and DB_PASSWORD_FILE")
+	}
+	if databaseURL != "" {
+		return databaseURL, nil
+	}
+	host := strings.TrimSpace(os.Getenv("DB_HOST"))
+	name := strings.TrimSpace(os.Getenv("DB_NAME"))
+	user, err := SecretValue("DB_USER", appEnv)
+	if err != nil {
+		return "", err
+	}
+	password, err := SecretValue("DB_PASSWORD", appEnv)
+	if err != nil {
+		return "", err
+	}
+	if host == "" && name == "" && user == "" && password == "" && appEnv != "production" {
+		return "", nil
+	}
+	if host == "" || name == "" || user == "" || password == "" {
+		return "", fmt.Errorf("DB_HOST, DB_NAME, DB_USER, and DB_PASSWORD are required when DATABASE_URL is not set")
+	}
+	port := envOr("DB_PORT", "5432")
+	portNumber, err := strconv.Atoi(port)
+	if err != nil || portNumber < 1 || portNumber > 65535 {
+		return "", fmt.Errorf("DB_PORT must be an integer from 1 to 65535")
+	}
+	databaseURL = (&url.URL{
+		Scheme:   "postgres",
+		User:     url.UserPassword(user, password),
+		Host:     net.JoinHostPort(host, port),
+		Path:     "/" + name,
+		RawQuery: "sslmode=disable",
+	}).String()
+	return databaseURL, nil
 }
 
 func envOr(key, fallback string) string {
@@ -172,6 +318,18 @@ func envDuration(key string, fallback time.Duration) (time.Duration, error) {
 	parsed, err := time.ParseDuration(strings.TrimSpace(value))
 	if err != nil {
 		return 0, fmt.Errorf("%s must be a duration: %w", key, err)
+	}
+	return parsed, nil
+}
+
+func envBool(key string, fallback bool) (bool, error) {
+	value, ok := os.LookupEnv(key)
+	if !ok {
+		return fallback, nil
+	}
+	parsed, err := strconv.ParseBool(strings.TrimSpace(value))
+	if err != nil {
+		return false, fmt.Errorf("%s must be true or false: %w", key, err)
 	}
 	return parsed, nil
 }

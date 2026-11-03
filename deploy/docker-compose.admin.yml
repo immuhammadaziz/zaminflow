@@ -1,0 +1,48 @@
+services:
+  admin:
+    build:
+      context: ..
+      dockerfile: Dockerfile
+    command: ["/app/admin", "create"]
+    env_file:
+      - ../.env.production
+    environment:
+      APP_ENV: production
+      DB_HOST: postgres
+      DB_PORT: "5432"
+      DB_NAME: ${DB_NAME:?Set DB_NAME in .env.production}
+      DB_USER_FILE: /run/secrets/zaminflow_db_user
+      DB_PASSWORD_FILE: /run/secrets/zaminflow_db_password
+      APP_SECRET_FILE: /run/secrets/zaminflow_app_secret
+      METRICS_TOKEN_FILE: /run/secrets/zaminflow_metrics_token
+      ADMIN_PASSWORD_FILE: /run/secrets/zaminflow_admin_bootstrap_secret
+      SMTP_REQUIRE_TLS: "true"
+      ADMIN_EMAIL: ${ADMIN_EMAIL:?Set ADMIN_EMAIL in .env.production}
+      ADMIN_FULL_NAME: ${ADMIN_FULL_NAME:?Set ADMIN_FULL_NAME in .env.production}
+    secrets:
+      - zaminflow_app_secret
+      - zaminflow_db_user
+      - zaminflow_db_password
+      - zaminflow_metrics_token
+      - zaminflow_admin_bootstrap_secret
+    tmpfs:
+      - /run/app-secrets:rw,noexec,nosuid,size=1m
+    depends_on:
+      postgres:
+        condition: service_healthy
+      migrate:
+        condition: service_completed_successfully
+    networks: [database]
+    restart: "no"
+
+secrets:
+  zaminflow_app_secret:
+    file: ${SECRETS_DIR:-/opt/zaminflow/secrets}/zaminflow_app_secret
+  zaminflow_db_user:
+    file: ${SECRETS_DIR:-/opt/zaminflow/secrets}/zaminflow_db_user
+  zaminflow_db_password:
+    file: ${SECRETS_DIR:-/opt/zaminflow/secrets}/zaminflow_db_password
+  zaminflow_metrics_token:
+    file: ${SECRETS_DIR:-/opt/zaminflow/secrets}/zaminflow_metrics_token
+  zaminflow_admin_bootstrap_secret:
+    file: ${SECRETS_DIR:-/opt/zaminflow/secrets}/zaminflow_admin_bootstrap_secret

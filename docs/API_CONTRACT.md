@@ -1,116 +1,94 @@
-# ZaminFlow API Contract (Draft)
+# ZaminFlow API Contract
 
-**Status: proposed contract for Step 0 approval.** OpenAPI is intended to be the source of truth after approval. No endpoint is implemented yet.
+**Status: implemented.** The versioned API is served below `/api/v1`; liveness, readiness, and metrics are root-level operational endpoints. [openapi.yaml](./openapi.yaml) describes the request and response schemas.
 
-## Global conventions
+## Conventions and security
 
-- Base path `/api/v1`; JSON request/response; camelCase fields; UUID identifiers.
-- Date-times are RFC 3339 UTC. Money is integer UZS; quantity is integer liters; enums are stable lowercase snake_case strings.
-- Lists use `page` (default 1), `pageSize` (default 20, maximum 100), optional documented `filter` and `sort` query parameters, and `{items, page, pageSize, total}` response.
-- Error body: `{"error":{"code":"...","message":"...","requestId":"...","fieldErrors":[{"field":"...","code":"...","message":"..."}]}}`.
-- Status meanings: `400` malformed/unknown JSON or query; `401` missing/invalid authentication; `403` authenticated but forbidden/unapproved; `404` absent or inaccessible resource; `409` duplicate/conflicting state transition; `422` valid JSON but invalid field values; `429` rate limit; `5xx` unexpected server/dependency failure with request ID only.
-- Requests reject unknown JSON fields and trailing JSON values. Success responses use stable typed shapes; errors never expose stack traces or secrets.
-- Authenticated requests use `Authorization: Bearer <accessToken>`. Refresh uses the secure refresh cookie and CSRF header for browser clients. Admin sign-in requires TOTP/recovery code.
-- Any marketplace route requires current DB status `approved`; DB role and status are authoritative. Ownership is checked for every resource.
+- JSON uses camelCase. IDs are UUIDs; timestamps are RFC 3339; money is integer UZS; listing and order quantities are whole liters.
+- Lists use `page` (default 1), `pageSize` (default 20, maximum 100), and return `{items,page,pageSize,total}`. Invalid query values return `400`.
+- Malformed JSON, unknown JSON fields, and trailing JSON values return `400`. Well-formed bodies with invalid values return `422`. Error responses have the shape `{"error":{"code":"...","message":"...","requestId":"...","fieldErrors":[...]}}`.
+- Authenticated APIs use `Authorization: Bearer <access-token>`. Access tokens expire; clients must use the refresh cookie to obtain a new one. Refresh tokens are not returned in JSON.
+- Browser clients must send credentials. `POST /auth/refresh` and `POST /auth/sign-out` require an allowlisted `Origin`, the `zf_csrf` cookie, and an identical `X-CSRF-Token` header. The CSRF cookie is HMAC-signed and is not HttpOnly so browser code can copy it to the header. See the [frontend integration guide](./FRONTEND_INTEGRATION.md).
+- Public sign-up permits only `farmer` and `processor`. Administrators are provisioned out of band and must enroll TOTP before normal admin access; recovery codes are shown once.
+- Marketplace and role-dashboard requests check current database status and role. Farmers manage their own listings; processors browse active listings; orders are visible only to their two parties.
 
-## Common schemas
+## Account and authentication routes
 
-### User
+| Method and path | Access and behavior | Success |
+|---|---|---|
+| `GET /meta/roles` | Public sign-up roles; never includes admin | `{items:[{value,label}]}` |
+| `GET /meta/regions` | Public; optional `page,pageSize` | Paginated region references with Uzbek, Russian, and English labels |
+| `POST /auth/sign-up` | Public; creates a pending farmer/processor account and queues email verification | `201 {user,message}` |
+| `POST /auth/email-verification/request` | Public, enumeration-safe | `202 {message}` |
+| `POST /auth/email-verification/confirm` | Public, one-time token | `200 {emailVerified:true}` |
+| `POST /auth/sign-in` | Public; admin must supply TOTP or recovery code | `200 {accessToken,expiresAt,user}`; sets refresh and CSRF cookies |
+| `POST /auth/refresh` | Refresh cookie + CSRF checks | `200 {accessToken,expiresAt,user}`; rotates both cookies |
+| `POST /auth/sign-out` | Bearer token + CSRF checks | `204`; revokes the current refresh-token family |
+| `POST /auth/password-reset/request` | Public, enumeration-safe | `202 {message}` |
+| `POST /auth/password-reset/confirm` | Public, one-time token; revokes sessions | `204` |
+| `GET /auth/sessions` | Authenticated; caller's active sessions | Paginated session records |
+| `DELETE /auth/sessions/{sessionId}` | Authenticated; revokes a caller-owned session | `204` |
+| `POST /auth/change-password` | Authenticated; changes password and revokes other sessions | `204` |
+| `POST /auth/totp/setup` | Admin enrollment-only or MFA-authenticated admin | `200 {secret,otpauthUri}` |
+| `POST /auth/totp/confirm` | Admin enrollment-only; verifies first code | `200 {recoveryCodes}`; enrollment sessions are revoked, so sign in again |
+| `POST /auth/totp/recovery-codes/rotate` | MFA-authenticated admin, verifies current factor | `200 {recoveryCodes}` |
+| `GET /me` | Authenticated | `200 {user}` |
+| `PATCH /me` | Authenticated; profile fields only, role/status are immutable here | `200 {user}` |
+| `POST /me/resubmit` | Rejected applicant after correcting profile | `202 {user}` and returns account to pending |
+| `DELETE /me` | Authenticated non-admin; records a deletion request, not an immediate delete | `202 {status:"requested"}`; active orders block the request |
+| `GET /me/deletion-request` | Farmer or processor; returns the caller's latest deletion request and review decision | `200 {request}`; `404` if no request exists |
 
-`{id, role, accountStatus, email, emailVerified, fullName, phone, organizationName, regionCode, stir, rejectionReason?, createdAt, updatedAt}`.
-`role` is `farmer | processor | admin`. `accountStatus` is `pending | approved | rejected | suspended`. `rejectionReason` is visible only to the applicant and admins.
+Email verification and password-reset links are delivered through the transactional outbox. Deletion requests are reviewed by administrators, but approval only authorizes separate manual retention/legal review. The API does not erase, anonymize, or suspend accounts through this workflow.
 
-### Listing
+## Administrator routes
 
-`{id, farmerId, regionCode, availableLiters, fatPercent, pricePerLiterUzs, availableFrom, availableUntil, status, createdAt, updatedAt}`.
-Initial status is `active` or `draft` per approved workflow; only active, non-expired inventory can be ordered. Exact field limits are to be finalized before implementation.
+All routes below require admin role and completed MFA. Mutations are audit-logged.
 
-### Order
+| Method and path | Behavior and success |
+|---|---|
+| `GET /admin/deletion-requests?page&pageSize&status` | Lists requests with account profiles; defaults to `requested`; `status=all` includes history |
+| `POST /admin/deletion-requests/{requestId}/approve` | Records approval for separate manual retention review; requests with active orders cannot be approved at review time; account data/status remain unchanged |
+| `POST /admin/deletion-requests/{requestId}/reject` | Requires `{reason}`; records reviewer, timestamp, reason, and audit event |
+| `GET /admin/applications?page&pageSize&role&regionCode` | Verified pending applicants; paginated result |
+| `GET /admin/applications/{userId}` | `{user,reviews}` with applicant record and review history |
+| `POST /admin/applications/{userId}/approve` | Optional `{reason}`; returns the updated user |
+| `POST /admin/applications/{userId}/reject` | Required `{reason}`; returns the updated user |
+| `POST /admin/users/{userId}/suspend` | Required `{reason}`; revokes user sessions; returns the updated user |
+| `POST /admin/users/{userId}/reinstate` | Optional `{reason}`; returns the updated user |
+| `GET /admin/audit-events?page&pageSize&actorId&action&targetId&targetType&from&to` | Filtered, paginated redacted audit events |
+| `GET /dashboards/admin` | Admin aggregates and operational counts; see dashboard routes below |
 
-`{id, listingId, farmerId, processorId, liters, pricePerLiterUzs, totalUzs, status, expectedPickupAt, note?, createdAt, updatedAt, history[]}`.
-Unit price and total are immutable snapshots. `history[]` contains status, actorId, timestamp, and optional note.
+## Marketplace routes
 
-### Dashboard
+All routes require an approved user. Invalid role or ownership returns `403`; missing or inaccessible objects return `404`.
 
-`{period:{from,to,bucket}, kpis:{...}, charts:{...}, tables:{...}}`. KPI values are calculated from stored rows; empty data returns zero or null where division is undefined, with empty arrays for series/tables.
+| Method and path | Access and behavior |
+|---|---|
+| `GET /listings?page&pageSize&regionCode&minLiters&sort` | Farmer sees own listings; processor searches active listings |
+| `POST /listings` | Farmer; creates an active listing from `regionCode,availableLiters,fatPercent,pricePerLiterUzs,availableFrom,availableUntil`; returns `201 {listing}` |
+| `GET /listings/{listingId}` | Listing owner or processor; returns a listing |
+| `PATCH /listings/{listingId}` | Farmer owner; updates allowed listing fields; returns a listing |
+| `DELETE /listings/{listingId}` | Farmer owner; archives listing when active reservations permit; returns `204` |
+| `GET /orders?page&pageSize&status` | Lists only the caller's orders, newest first |
+| `POST /orders` | Processor; `{listingId,liters,expectedPickupAt,note?}`; atomically reserves stock; returns `201 {order}` |
+| `GET /orders/{orderId}` | Order party; includes status history |
+| `POST /orders/{orderId}/accept` | Farmer party; optional `{reason}` recorded in history; returns `{order}` |
+| `POST /orders/{orderId}/reject` | Farmer party; optional reason; releases reserved stock; returns `{order}` |
+| `POST /orders/{orderId}/cancel` | Processor party before acceptance; optional `{reason}`; releases reserved stock; returns `{order}` |
+| `POST /orders/{orderId}/status` | Party permitted by the transition; `{status,note?}`; returns `{order}` |
+| `POST /orders/{orderId}/disputes` | Order party before completion; `{reason}`; returns `201 {status:"disputed"}` |
+| `POST /orders/{orderId}/quality-reports` | Order party; `{measurements,outcome,note?}`; returns `201 {status:"recorded"}` |
 
-## Endpoint contract inventory
+Order creation locks and reserves available inventory in a database transaction. Rejection and eligible cancellation release the reservation; completion consumes it. Unit price and order total are snapshots. Dispute resolution is not automated; a disputed order remains for out-of-band review.
 
-The tables below enumerate the proposed operations and their access, inputs, success shape, and principal error cases. The OpenAPI draft provides machine-readable path/method/security declarations. More detailed field limits and examples are to be finalized after product approval.
+## Dashboards and operations
 
-### Public/authentication/profile
+`GET /dashboards/farmer` and `/dashboards/processor` require the matching approved role. `GET /dashboards/admin` requires MFA-authenticated admin. All accept `period=7d|30d|90d|12m` (default `30d`) or an RFC 3339 `from` and `to` pair with a maximum span of 366 days. Custom ranges over 90 days use monthly buckets; shorter ranges use daily buckets. Responses contain KPI, time-series, and table aggregates; empty sets return zero/null values and empty arrays.
 
-| Method/path | Auth and input | Success | Errors |
-|---|---|---|---|
-| `GET /meta/roles` | Public; no body | `{items:[{value,label}]}` containing only farmer/processor | `429` |
-| `GET /meta/regions` | Public; optional `page,pageSize` | Paginated region references | `400,429,5xx` |
-| `POST /auth/sign-up` | Public; `fullName,email,password,role,phone,organizationName,regionCode,stir`; role only farmer/processor | `201 {user, message}`; user status pending | `400,409,422,429,5xx` |
-| `POST /auth/email-verification/request` | Public; `{email}` | `202 {message}` enumeration-safe | `400,422,429,5xx` |
-| `POST /auth/email-verification/confirm` | Public; `{token}` | `200 {emailVerified:true}` | `400,409,422,429` |
-| `POST /auth/sign-in` | Public; `{email,password,totpCode?}` | `200 {accessToken,expiresAt,user}`; refresh cookie set | `401` generic, `403 account_suspended`, `422,429` |
-| `POST /auth/refresh` | Refresh cookie (or opt-in native mode); CSRF checks for browser | `200 {accessToken,expiresAt,user}`; rotated cookie | `401,403,409 refresh_reuse_detected,429` |
-| `POST /auth/sign-out` | Authenticated; CSRF for cookie mode | `204`; current family revoked | `401,403` |
-| `POST /auth/password-reset/request` | Public; `{email}` | `202 {message}` enumeration-safe | `400,422,429` |
-| `POST /auth/password-reset/confirm` | Public; `{token,newPassword}` | `204`; sessions revoked | `400,409,422,429` |
-| `GET /auth/sessions` | Authenticated; pagination | Paginated caller-owned sessions | `401,400` |
-| `DELETE /auth/sessions/{sessionId}` | Authenticated; UUID path | `204` | `401,404` |
-| `POST /auth/change-password` | Authenticated; `{currentPassword,newPassword}` | `204`; other sessions revoked | `401,403,422,429` |
-| `GET /me` | Authenticated | `200 {user}` including live account status | `401` |
-| `PATCH /me` | Authenticated; allowed profile fields only | `200 {user}` | `401,403,404,422,409` |
-| `POST /me/resubmit` | Rejected farmer/processor; corrected profile already saved | `202 {user}` with pending status | `401,403,409,422` |
-| `DELETE /me` | Authenticated; `{confirmation}` proposed | `202 {requestId,status}` | `401,403,409` |
-| `POST /auth/totp/setup` | Admin authenticated; no body | `200 {secret,otpauthUri}` shown once | `401,403,409` |
-| `POST /auth/totp/confirm` | Admin; `{code}` | `200 {recoveryCodes[]}` shown once | `401,403,409,422,429` |
-| `POST /auth/totp/recovery-codes/rotate` | MFA-authenticated admin; `{code}` | `200 {recoveryCodes[]}` | `401,403,422,429` |
+- `GET /healthz`: process liveness, root path.
+- `GET /readyz`: database readiness probe, root path.
+- `GET /metrics`: Prometheus request counters by route template, method, and status; root path. Requires `Authorization: Bearer <METRICS_TOKEN>` when configured. Production Caddy denies public access to this path.
 
-### Admin
+## Error codes and status
 
-All admin endpoints require admin role and completed MFA; all mutations are audited.
-
-| Method/path | Input | Success | Errors |
-|---|---|---|---|
-| `GET /admin/applications` | `page,pageSize,status,role,regionCode,sort`; verified pending only by default | Paginated applicant summaries including oldest wait metadata | `401,403,400` |
-| `GET /admin/applications/{userId}` | UUID path | Applicant, status and review history | `401,403,404` |
-| `POST /admin/applications/{userId}/approve` | Optional `{reason}` | `200 {user,review}` | `401,403,404,409` |
-| `POST /admin/applications/{userId}/reject` | `{reason}` required | `200 {user,review}` | `401,403,404,409,422` |
-| `POST /admin/users/{userId}/suspend` | `{reason}` required | `200 {user,review}` and sessions revoked | `401,403,404,409,422` |
-| `POST /admin/users/{userId}/reinstate` | Optional `{reason}` | `200 {user,review}`; approved status | `401,403,404,409` |
-| `GET /admin/audit-events` | `page,pageSize,actorId,action,targetId,from,to,sort` | Paginated redacted events | `401,403,400` |
-| `GET /dashboards/admin` | Period query | Admin dashboard | `401,403,400` |
-
-### Marketplace and role dashboards
-
-All require authenticated approved account. Listings: processor can search active listings; farmer can read/manage own listings only. Orders are visible only to their farmer and processor parties. Mutation transitions are atomic.
-
-| Method/path | Role/input | Success | Errors |
-|---|---|---|---|
-| `GET /listings` | Processor; filters region, min/max price, min liters, availability; pagination/sort | Paginated active listings | `401,403 account_not_approved/account_rejected/account_suspended,400` |
-| `POST /listings` | Farmer; quantity, fat %, integer price, region, availability | `201 {listing}` | `401,403,409,422` |
-| `GET /listings/{listingId}` | Approved farmer owner or processor | `{listing}` | `401,403,404` |
-| `PATCH /listings/{listingId}` | Farmer owner; mutable listing fields | `{listing}` | `401,403,404,409,422` |
-| `DELETE /listings/{listingId}` | Farmer owner | `204` archived | `401,403,404,409` |
-| `GET /orders` | Farmer or processor; status/date filters; pagination/sort | Paginated own-party orders | `401,403,400` |
-| `POST /orders` | Processor; `{listingId,liters,expectedPickupAt,note?}` | `201 {order}` | `401,403,404,409,422` |
-| `GET /orders/{orderId}` | Farmer or processor party | `{order}` with history | `401,403,404` |
-| `POST /orders/{orderId}/accept` | Farmer party; optional note | `{order}` | `401,403,404,409` |
-| `POST /orders/{orderId}/reject` | Farmer party; `{reason?}` | `{order}` | `401,403,404,409,422` |
-| `POST /orders/{orderId}/cancel` | Processor party; optional reason; only before acceptance | `{order}` | `401,403,404,409,422` |
-| `POST /orders/{orderId}/status` | Correct party; `{status,note?}` next allowed fulfillment state only | `{order}` | `401,403,404,409,422` |
-| `POST /orders/{orderId}/disputes` | Either party; `{reason}` | `201 {dispute}` | `401,403,404,409,422` |
-| `POST /orders/{orderId}/quality-reports` | Either party; proposed `{measurements,outcome,note?}` | `201 {qualityReport}` | `401,403,404,409,422` |
-| `GET /dashboards/farmer` | Farmer; period query | Farmer dashboard aggregate | `401,403,400` |
-| `GET /dashboards/processor` | Processor; period query | Processor dashboard aggregate | `401,403,400` |
-
-### Platform operations
-
-| Method/path | Access | Success | Errors |
-|---|---|---|---|
-| `GET /healthz` | Public liveness | `200 {status:"ok"}` | `503` if process unhealthy |
-| `GET /readyz` | Public or internal; DB probe | `200 {status:"ready"}` | `503` if dependency unavailable |
-| `GET /metrics` | Internal/protected only | Prometheus metrics | `401/403` or network denied |
-
-## Stable proposed error codes
-
-`invalid_request`, `validation_failed`, `unauthenticated`, `forbidden`, `not_found`, `conflict`, `rate_limited`, `account_not_approved`, `account_rejected`, `account_suspended`, `email_not_verified`, `invalid_credentials`, `refresh_token_reuse_detected`, `invalid_state_transition`, `ownership_required`, `last_active_admin`, `admin_mfa_required`, `internal_error`.
-
-The exact field validations, sorting allowlists, and additional endpoint-specific error cases must be completed in OpenAPI before implementation. This draft intentionally awaits approval of product decisions rather than treating proposed details as final.
+Common error codes include `invalid_request`, `validation_failed`, `unauthenticated`, `forbidden`, `not_found`, `conflict`, `rate_limited`, `account_not_approved`, `account_rejected`, `account_suspended`, `invalid_credentials`, `refresh_token_reuse_detected`, `admin_mfa_required`, `csrf_validation_failed`, and `internal_error`. Operational middleware may also return `method_not_allowed`, `cors_origin_denied`, `cors_origin_required`, or `dependency_unavailable`. See each OpenAPI operation for its expected status codes. Unexpected server errors include a request ID and do not expose internal details.

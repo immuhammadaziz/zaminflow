@@ -1,0 +1,10 @@
+{$API_DOMAIN} {
+	encode zstd gzip
+
+	@metrics path /metrics /metrics/*
+	respond @metrics 404
+
+	reverse_proxy api:8080 {
+		header_up X-Real-IP {http.request.remote.host}
+	}
+}

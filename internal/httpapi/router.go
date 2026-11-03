@@ -10,12 +10,18 @@ import (
 	"github.com/go-chi/chi/v5/middleware"
 )
 
+type RouterOptions struct {
+	RegisterAPI  func(chi.Router)
+	MetricsToken string
+}
+
 type pinger interface {
 	Ping(context.Context) error
 }
 
-func NewRouter(database pinger, logger *slog.Logger, allowedOrigins []string, requestTimeout time.Duration, maxBodyBytes int64) http.Handler {
+func NewRouter(database pinger, logger *slog.Logger, allowedOrigins []string, requestTimeout time.Duration, maxBodyBytes int64, options ...RouterOptions) http.Handler {
 	router := chi.NewRouter()
+	metrics := newRequestMetrics()
 	router.Use(requestIDMiddleware(logger))
 	router.Use(requestLogger(logger))
 	router.Use(recoveryMiddleware(logger))
@@ -24,6 +30,7 @@ func NewRouter(database pinger, logger *slog.Logger, allowedOrigins []string, re
 	router.Use(bodyLimitMiddleware(maxBodyBytes))
 	router.Use(corsMiddleware(allowedOrigins))
 	router.Use(middleware.Compress(5, "application/json"))
+	router.Use(metrics.middleware)
 	router.NotFound(func(w http.ResponseWriter, r *http.Request) {
 		writeError(w, r, http.StatusNotFound, "not_found", "The requested resource was not found.")
 	})
@@ -45,6 +52,14 @@ func NewRouter(database pinger, logger *slog.Logger, allowedOrigins []string, re
 		}
 		writeJSON(w, http.StatusOK, map[string]string{"status": "ready"})
 	})
+	var optionsValue RouterOptions
+	if len(options) > 0 {
+		optionsValue = options[0]
+	}
+	router.Get("/metrics", metrics.handler(optionsValue.MetricsToken))
+	if optionsValue.RegisterAPI != nil {
+		router.Route("/api/v1", optionsValue.RegisterAPI)
+	}
 	return router
 }
 
