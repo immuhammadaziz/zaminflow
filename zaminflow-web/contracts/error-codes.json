@@ -1,0 +1,21 @@
+[
+  "account_not_approved",
+  "account_rejected",
+  "account_suspended",
+  "admin_mfa_required",
+  "conflict",
+  "cors_origin_denied",
+  "cors_origin_required",
+  "csrf_validation_failed",
+  "dependency_unavailable",
+  "forbidden",
+  "internal_error",
+  "invalid_credentials",
+  "invalid_request",
+  "method_not_allowed",
+  "not_found",
+  "rate_limited",
+  "refresh_token_reuse_detected",
+  "unauthenticated",
+  "validation_failed"
+]

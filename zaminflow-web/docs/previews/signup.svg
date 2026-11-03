@@ -1,0 +1,85 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1540" height="850" viewBox="0 0 1540 850" role="img" aria-labelledby="title desc">
+  <title id="title">ZaminFlow sign-up desktop and mobile design preview</title>
+  <desc id="desc">Single-column labeled sign-up form with API-backed role and region choices. Example fields are empty; no personal data is shown.</desc>
+  <rect width="1540" height="850" fill="#EEECE5"/>
+  <text x="24" y="34" fill="#5E6259" font-family="Arial,sans-serif" font-size="14" font-weight="700" letter-spacing="2">02 / SIGN UP — DESKTOP 1080 × MOBILE 388</text>
+  <rect x="22" y="52" width="1080" height="770" rx="18" fill="#F7F5EF"/>
+  <rect x="22" y="52" width="1080" height="36" rx="18" fill="#E9E6DC"/>
+  <circle cx="45" cy="70" r="5" fill="#B5B1A6"/><circle cx="63" cy="70" r="5" fill="#B5B1A6"/><circle cx="81" cy="70" r="5" fill="#B5B1A6"/>
+  <rect x="371" y="61" width="390" height="18" rx="9" fill="#F7F5EF"/>
+  <rect x="52" y="109" width="38" height="38" rx="11" fill="#E5EBDD"/>
+  <path d="M61 136 80 117M63 126h16M67 132h12" stroke="#2F5D46" stroke-width="2.5" stroke-linecap="round"/>
+  <text x="103" y="136" fill="#2B211B" font-family="Georgia,serif" font-size="25" font-weight="700">ZaminFlow</text>
+  <text x="920" y="134" fill="#5E6259" font-family="Arial,sans-serif" font-size="13">Already registered?</text>
+  <text x="1017" y="134" fill="#2F5D46" font-family="Arial,sans-serif" font-size="13" font-weight="700">Sign in</text>
+  <path d="M48 166H1076" stroke="#D9D5C9"/>
+  <text x="52" y="220" fill="#2F5D46" font-family="Arial,sans-serif" font-size="12" font-weight="700" letter-spacing="1.5">JOIN THE MARKETPLACE</text>
+  <text x="52" y="266" fill="#2B211B" font-family="Georgia,serif" font-size="36" font-weight="700">Create your account</text>
+  <text x="52" y="293" fill="#5E6259" font-family="Arial,sans-serif" font-size="14">Your details help us verify your business before you trade.</text>
+  <rect x="52" y="321" width="620" height="456" rx="18" fill="#FFFFFF" stroke="#E3DED2"/>
+  <text x="78" y="359" fill="#2B211B" font-family="Arial,sans-serif" font-size="14" font-weight="700">I am registering as</text>
+  <rect x="78" y="376" width="270" height="48" rx="12" fill="#EEF2EA" stroke="#2F5D46" stroke-width="2"/>
+  <circle cx="101" cy="400" r="8" fill="#FFFFFF" stroke="#2F5D46" stroke-width="2"/><circle cx="101" cy="400" r="4" fill="#2F5D46"/>
+  <text x="119" y="405" fill="#2B211B" font-family="Arial,sans-serif" font-size="14" font-weight="700">Farmer</text>
+  <rect x="360" y="376" width="286" height="48" rx="12" fill="#FFFFFF" stroke="#D9D5C9"/>
+  <circle cx="383" cy="400" r="8" fill="#FFFFFF" stroke="#A8A397" stroke-width="2"/>
+  <text x="401" y="405" fill="#2B211B" font-family="Arial,sans-serif" font-size="14">Processor</text>
+  <text x="78" y="454" fill="#2B211B" font-family="Arial,sans-serif" font-size="12" font-weight="700">Full name</text>
+  <rect x="78" y="463" width="568" height="42" rx="9" fill="#FFFFFF" stroke="#BDB9AE"/>
+  <text x="93" y="489" fill="#8A887F" font-family="Arial,sans-serif" font-size="13">As shown on your business records</text>
+  <text x="78" y="532" fill="#2B211B" font-family="Arial,sans-serif" font-size="12" font-weight="700">Email address</text>
+  <rect x="78" y="541" width="568" height="42" rx="9" fill="#FFFFFF" stroke="#BDB9AE"/>
+  <text x="93" y="567" fill="#8A887F" font-family="Arial,sans-serif" font-size="13">name@example.com</text>
+  <text x="78" y="610" fill="#2B211B" font-family="Arial,sans-serif" font-size="12" font-weight="700">Password</text>
+  <rect x="78" y="619" width="568" height="42" rx="9" fill="#FFFFFF" stroke="#BDB9AE"/>
+  <text x="93" y="645" fill="#8A887F" font-family="Arial,sans-serif" font-size="13">At least 12 characters</text>
+  <text x="608" y="645" fill="#2F5D46" font-family="Arial,sans-serif" font-size="12" font-weight="700">Show</text>
+  <text x="78" y="682" fill="#5E6259" font-family="Arial,sans-serif" font-size="11">Use 12–128 characters; avoid common passwords.</text>
+  <rect x="78" y="706" width="568" height="48" rx="24" fill="#2F5D46"/>
+  <text x="266" y="736" fill="#FFFFFF" font-family="Arial,sans-serif" font-size="14" font-weight="700">Continue to business details  →</text>
+  <rect x="708" y="321" width="368" height="456" rx="18" fill="#EAEDE4"/>
+  <text x="740" y="371" fill="#2F5D46" font-family="Arial,sans-serif" font-size="12" font-weight="700" letter-spacing="1">A CLEAR, FAIR START</text>
+  <text x="740" y="415" fill="#2B211B" font-family="Georgia,serif" font-size="25" font-weight="700">Verified before trade.</text>
+  <text x="740" y="449" fill="#5E6259" font-family="Arial,sans-serif" font-size="13">Every farmer and processor account is</text>
+  <text x="740" y="470" fill="#5E6259" font-family="Arial,sans-serif" font-size="13">reviewed before marketplace access.</text>
+  <circle cx="756" cy="525" r="15" fill="#2F5D46"/><path d="m749 525 5 5 9-11" fill="none" stroke="#FFFFFF" stroke-width="2"/>
+  <text x="784" y="522" fill="#2B211B" font-family="Arial,sans-serif" font-size="13" font-weight="700">Email verification</text>
+  <text x="784" y="543" fill="#5E6259" font-family="Arial,sans-serif" font-size="12">Confirm your email address.</text>
+  <circle cx="756" cy="588" r="15" fill="#2F5D46"/><path d="m749 588 5 5 9-11" fill="none" stroke="#FFFFFF" stroke-width="2"/>
+  <text x="784" y="585" fill="#2B211B" font-family="Arial,sans-serif" font-size="13" font-weight="700">Admin review</text>
+  <text x="784" y="606" fill="#5E6259" font-family="Arial,sans-serif" font-size="12">We review verified applications.</text>
+  <circle cx="756" cy="651" r="15" fill="#2F5D46"/><path d="m749 651 5 5 9-11" fill="none" stroke="#FFFFFF" stroke-width="2"/>
+  <text x="784" y="648" fill="#2B211B" font-family="Arial,sans-serif" font-size="13" font-weight="700">Start with confidence</text>
+  <text x="784" y="669" fill="#5E6259" font-family="Arial,sans-serif" font-size="12">Approval is required before trading.</text>
+  <text x="740" y="733" fill="#5E6259" font-family="Arial,sans-serif" font-size="11">Your information is sent securely to the API.</text>
+  <rect x="1130" y="52" width="388" height="770" rx="24" fill="#F7F5EF" stroke="#D9D5C9"/>
+  <rect x="1130" y="52" width="388" height="36" rx="20" fill="#E9E6DC"/>
+  <circle cx="1152" cy="70" r="4" fill="#B5B1A6"/><circle cx="1167" cy="70" r="4" fill="#B5B1A6"/><circle cx="1182" cy="70" r="4" fill="#B5B1A6"/>
+  <rect x="1150" y="105" width="34" height="34" rx="10" fill="#E5EBDD"/>
+  <path d="M1158 131 1176 113M1160 122h14M1164 128h10" stroke="#2F5D46" stroke-width="2.5" stroke-linecap="round"/>
+  <text x="1194" y="130" fill="#2B211B" font-family="Georgia,serif" font-size="22" font-weight="700">ZaminFlow</text>
+  <text x="1150" y="180" fill="#2F5D46" font-family="Arial,sans-serif" font-size="10" font-weight="700" letter-spacing="1">JOIN THE MARKETPLACE</text>
+  <text x="1150" y="218" fill="#2B211B" font-family="Georgia,serif" font-size="30" font-weight="700">Create account</text>
+  <text x="1150" y="243" fill="#5E6259" font-family="Arial,sans-serif" font-size="12">First, choose how you participate.</text>
+  <text x="1150" y="281" fill="#2B211B" font-family="Arial,sans-serif" font-size="12" font-weight="700">I am registering as</text>
+  <rect x="1150" y="293" width="348" height="44" rx="11" fill="#EEF2EA" stroke="#2F5D46" stroke-width="2"/>
+  <circle cx="1174" cy="315" r="8" fill="#FFFFFF" stroke="#2F5D46" stroke-width="2"/><circle cx="1174" cy="315" r="4" fill="#2F5D46"/>
+  <text x="1193" y="320" fill="#2B211B" font-family="Arial,sans-serif" font-size="13" font-weight="700">Farmer</text>
+  <rect x="1150" y="345" width="348" height="44" rx="11" fill="#FFFFFF" stroke="#D9D5C9"/>
+  <circle cx="1174" cy="367" r="8" fill="#FFFFFF" stroke="#A8A397" stroke-width="2"/>
+  <text x="1193" y="372" fill="#2B211B" font-family="Arial,sans-serif" font-size="13">Processor</text>
+  <text x="1150" y="425" fill="#2B211B" font-family="Arial,sans-serif" font-size="12" font-weight="700">Full name</text>
+  <rect x="1150" y="434" width="348" height="40" rx="8" fill="#FFFFFF" stroke="#BDB9AE"/>
+  <text x="1164" y="459" fill="#8A887F" font-family="Arial,sans-serif" font-size="12">Your full name</text>
+  <text x="1150" y="503" fill="#2B211B" font-family="Arial,sans-serif" font-size="12" font-weight="700">Email address</text>
+  <rect x="1150" y="512" width="348" height="40" rx="8" fill="#FFFFFF" stroke="#BDB9AE"/>
+  <text x="1164" y="537" fill="#8A887F" font-family="Arial,sans-serif" font-size="12">name@example.com</text>
+  <text x="1150" y="581" fill="#2B211B" font-family="Arial,sans-serif" font-size="12" font-weight="700">Password</text>
+  <rect x="1150" y="590" width="348" height="40" rx="8" fill="#FFFFFF" stroke="#BDB9AE"/>
+  <text x="1164" y="615" fill="#8A887F" font-family="Arial,sans-serif" font-size="12">At least 12 characters</text>
+  <text x="1150" y="648" fill="#5E6259" font-family="Arial,sans-serif" font-size="10">12–128 characters; avoid common passwords.</text>
+  <rect x="1150" y="666" width="348" height="46" rx="23" fill="#2F5D46"/>
+  <text x="1245" y="694" fill="#FFFFFF" font-family="Arial,sans-serif" font-size="13" font-weight="700">Continue  →</text>
+  <text x="1150" y="740" fill="#5E6259" font-family="Arial,sans-serif" font-size="11">Already registered? <tspan fill="#2F5D46" font-weight="700">Sign in</tspan></text>
+  <text x="1150" y="770" fill="#5E6259" font-family="Arial,sans-serif" font-size="10">Business details follow in the next step.</text>
+</svg>

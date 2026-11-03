@@ -1,0 +1,88 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1540" height="850" viewBox="0 0 1540 850" role="img" aria-labelledby="title desc">
+  <title id="title">ZaminFlow landing page desktop and mobile design preview</title>
+  <desc id="desc">Static design mockup using ivory, espresso and sage brand cues. No live or invented marketplace data is shown.</desc>
+  <rect width="1540" height="850" fill="#EEECE5"/>
+  <text x="24" y="34" fill="#5E6259" font-family="Arial,sans-serif" font-size="14" font-weight="700" letter-spacing="2">01 / PUBLIC LANDING — DESKTOP 1080 × MOBILE 388</text>
+  <rect x="22" y="52" width="1080" height="770" rx="18" fill="#F7F5EF"/>
+  <rect x="22" y="52" width="1080" height="36" rx="18" fill="#E9E6DC"/>
+  <circle cx="45" cy="70" r="5" fill="#B5B1A6"/><circle cx="63" cy="70" r="5" fill="#B5B1A6"/><circle cx="81" cy="70" r="5" fill="#B5B1A6"/>
+  <rect x="371" y="61" width="390" height="18" rx="9" fill="#F7F5EF"/>
+  <rect x="48" y="111" width="40" height="40" rx="12" fill="#E5EBDD"/>
+  <path d="M58 139 78 119M60 128h17M64 135h13" stroke="#2F5D46" stroke-width="3" stroke-linecap="round"/>
+  <text x="101" y="139" fill="#2B211B" font-family="Georgia,serif" font-size="28" font-weight="700">ZaminFlow</text>
+  <text x="420" y="137" fill="#5E6259" font-family="Arial,sans-serif" font-size="14">How it works</text>
+  <text x="535" y="137" fill="#5E6259" font-family="Arial,sans-serif" font-size="14">For farmers</text>
+  <text x="642" y="137" fill="#5E6259" font-family="Arial,sans-serif" font-size="14">For processors</text>
+  <text x="785" y="137" fill="#5E6259" font-family="Arial,sans-serif" font-size="14">UZ  RU  EN</text>
+  <rect x="890" y="113" width="82" height="40" rx="20" fill="none" stroke="#D9D5C9"/>
+  <text x="911" y="138" fill="#2B211B" font-family="Arial,sans-serif" font-size="13" font-weight="700">Sign in</text>
+  <rect x="980" y="113" width="96" height="40" rx="20" fill="#2F5D46"/>
+  <text x="997" y="138" fill="#FFFFFF" font-family="Arial,sans-serif" font-size="13" font-weight="700">Join ZaminFlow</text>
+  <path d="M48 174H1076" stroke="#D9D5C9"/>
+  <rect x="48" y="214" width="185" height="32" rx="16" fill="#E6EBE1"/>
+  <circle cx="66" cy="230" r="5" fill="#2F5D46"/>
+  <text x="80" y="235" fill="#2F5D46" font-family="Arial,sans-serif" font-size="13" font-weight="700">A clearer dairy marketplace</text>
+  <text x="48" y="309" fill="#2B211B" font-family="Georgia,serif" font-size="49" font-weight="700">From farm supply</text>
+  <text x="48" y="367" fill="#2F5D46" font-family="Georgia,serif" font-size="49" font-weight="700">to trusted trade.</text>
+  <text x="50" y="412" fill="#5E6259" font-family="Arial,sans-serif" font-size="17">A shared workspace for Uzbekistan's farmers and dairy processors.</text>
+  <text x="50" y="438" fill="#5E6259" font-family="Arial,sans-serif" font-size="17">Verified accounts, clear offers and order milestones in one place.</text>
+  <rect x="48" y="473" width="174" height="48" rx="24" fill="#2F5D46"/>
+  <text x="70" y="503" fill="#FFFFFF" font-family="Arial,sans-serif" font-size="14" font-weight="700">Create an account  →</text>
+  <rect x="236" y="473" width="138" height="48" rx="24" fill="#FFFFFF" stroke="#D9D5C9"/>
+  <text x="263" y="503" fill="#2B211B" font-family="Arial,sans-serif" font-size="14" font-weight="700">How it works</text>
+  <rect x="630" y="210" width="418" height="370" rx="24" fill="#FFFFFF" stroke="#E3DED2"/>
+  <rect x="650" y="230" width="378" height="70" rx="15" fill="#F4F2EC"/>
+  <circle cx="682" cy="265" r="17" fill="#E3EBDD"/>
+  <path d="M674 267h16M677 258l5-4 5 4v12h-10z" fill="none" stroke="#2F5D46" stroke-width="2"/>
+  <text x="710" y="260" fill="#2B211B" font-family="Arial,sans-serif" font-size="15" font-weight="700">A simple, shared workflow</text>
+  <text x="710" y="281" fill="#5E6259" font-family="Arial,sans-serif" font-size="12">Designed around real marketplace steps</text>
+  <circle cx="682" cy="350" r="18" fill="#E6EBE1"/><text x="677" y="355" fill="#2F5D46" font-family="Arial,sans-serif" font-size="13" font-weight="700">1</text>
+  <text x="718" y="347" fill="#2B211B" font-family="Arial,sans-serif" font-size="15" font-weight="700">Farmers publish an offer</text>
+  <text x="718" y="369" fill="#5E6259" font-family="Arial,sans-serif" font-size="13">Volume, quality, region and price</text>
+  <path d="M682 373v22" stroke="#D9D5C9" stroke-width="2"/>
+  <circle cx="682" cy="423" r="18" fill="#F4EBDD"/><text x="677" y="428" fill="#87520F" font-family="Arial,sans-serif" font-size="13" font-weight="700">2</text>
+  <text x="718" y="420" fill="#2B211B" font-family="Arial,sans-serif" font-size="15" font-weight="700">Processors place an order</text>
+  <text x="718" y="442" fill="#5E6259" font-family="Arial,sans-serif" font-size="13">Available stock is reserved atomically</text>
+  <path d="M682 446v22" stroke="#D9D5C9" stroke-width="2"/>
+  <circle cx="682" cy="496" r="18" fill="#E8EEF1"/><text x="677" y="501" fill="#315B76" font-family="Arial,sans-serif" font-size="13" font-weight="700">3</text>
+  <text x="718" y="493" fill="#2B211B" font-family="Arial,sans-serif" font-size="15" font-weight="700">Both sides track milestones</text>
+  <text x="718" y="515" fill="#5E6259" font-family="Arial,sans-serif" font-size="13">The parties coordinate fulfillment</text>
+  <text x="650" y="558" fill="#5E6259" font-family="Arial,sans-serif" font-size="11">No payments or transport are arranged by the platform.</text>
+  <text x="49" y="618" fill="#2B211B" font-family="Georgia,serif" font-size="25" font-weight="700">Built for two sides of the dairy market</text>
+  <rect x="48" y="641" width="495" height="116" rx="16" fill="#FFFFFF" stroke="#E3DED2"/>
+  <text x="72" y="677" fill="#2F5D46" font-family="Arial,sans-serif" font-size="13" font-weight="700">FOR FARMERS</text>
+  <text x="72" y="708" fill="#2B211B" font-family="Arial,sans-serif" font-size="17" font-weight="700">Make available supply easier to compare.</text>
+  <text x="72" y="733" fill="#5E6259" font-family="Arial,sans-serif" font-size="13">Manage offers and respond to processor orders.</text>
+  <rect x="560" y="641" width="488" height="116" rx="16" fill="#FFFFFF" stroke="#E3DED2"/>
+  <text x="584" y="677" fill="#2F5D46" font-family="Arial,sans-serif" font-size="13" font-weight="700">FOR PROCESSORS</text>
+  <text x="584" y="708" fill="#2B211B" font-family="Arial,sans-serif" font-size="17" font-weight="700">Find offers with the details that matter.</text>
+  <text x="584" y="733" fill="#5E6259" font-family="Arial,sans-serif" font-size="13">Reserve volume and track order status together.</text>
+  <rect x="1130" y="52" width="388" height="770" rx="24" fill="#F7F5EF" stroke="#D9D5C9"/>
+  <rect x="1130" y="52" width="388" height="36" rx="20" fill="#E9E6DC"/>
+  <circle cx="1152" cy="70" r="4" fill="#B5B1A6"/><circle cx="1167" cy="70" r="4" fill="#B5B1A6"/><circle cx="1182" cy="70" r="4" fill="#B5B1A6"/>
+  <rect x="1150" y="105" width="36" height="36" rx="11" fill="#E5EBDD"/>
+  <path d="M1159 132 1177 114M1160 123h15M1165 129h11" stroke="#2F5D46" stroke-width="2.5" stroke-linecap="round"/>
+  <text x="1197" y="130" fill="#2B211B" font-family="Georgia,serif" font-size="23" font-weight="700">ZaminFlow</text>
+  <text x="1470" y="130" fill="#2B211B" font-family="Arial,sans-serif" font-size="23">☰</text>
+  <path d="M1150 158H1498" stroke="#D9D5C9"/>
+  <rect x="1150" y="187" width="210" height="28" rx="14" fill="#E6EBE1"/>
+  <text x="1164" y="206" fill="#2F5D46" font-family="Arial,sans-serif" font-size="11" font-weight="700">A CLEARER DAIRY MARKETPLACE</text>
+  <text x="1150" y="274" fill="#2B211B" font-family="Georgia,serif" font-size="37" font-weight="700">From farm</text>
+  <text x="1150" y="316" fill="#2F5D46" font-family="Georgia,serif" font-size="37" font-weight="700">supply to</text>
+  <text x="1150" y="358" fill="#2F5D46" font-family="Georgia,serif" font-size="37" font-weight="700">trusted trade.</text>
+  <text x="1152" y="398" fill="#5E6259" font-family="Arial,sans-serif" font-size="13">A shared workspace for Uzbekistan's</text>
+  <text x="1152" y="418" fill="#5E6259" font-family="Arial,sans-serif" font-size="13">farmers and dairy processors.</text>
+  <rect x="1150" y="446" width="348" height="48" rx="24" fill="#2F5D46"/>
+  <text x="1220" y="476" fill="#FFFFFF" font-family="Arial,sans-serif" font-size="14" font-weight="700">Create an account  →</text>
+  <rect x="1150" y="506" width="348" height="48" rx="24" fill="#FFFFFF" stroke="#D9D5C9"/>
+  <text x="1273" y="536" fill="#2B211B" font-family="Arial,sans-serif" font-size="14" font-weight="700">How it works</text>
+  <rect x="1150" y="577" width="348" height="204" rx="18" fill="#FFFFFF" stroke="#E3DED2"/>
+  <text x="1172" y="611" fill="#2B211B" font-family="Arial,sans-serif" font-size="15" font-weight="700">The marketplace, step by step</text>
+  <text x="1172" y="650" fill="#2F5D46" font-family="Arial,sans-serif" font-size="13" font-weight="700">01</text>
+  <text x="1210" y="650" fill="#2B211B" font-family="Arial,sans-serif" font-size="13">Publish an offer</text>
+  <text x="1172" y="690" fill="#87520F" font-family="Arial,sans-serif" font-size="13" font-weight="700">02</text>
+  <text x="1210" y="690" fill="#2B211B" font-family="Arial,sans-serif" font-size="13">Place an order</text>
+  <text x="1172" y="730" fill="#315B76" font-family="Arial,sans-serif" font-size="13" font-weight="700">03</text>
+  <text x="1210" y="730" fill="#2B211B" font-family="Arial,sans-serif" font-size="13">Track milestones</text>
+  <text x="1172" y="761" fill="#5E6259" font-family="Arial,sans-serif" font-size="10">No payment or transport service is implied.</text>
+</svg>

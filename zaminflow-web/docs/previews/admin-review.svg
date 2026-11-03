@@ -1,0 +1,104 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1540" height="850" viewBox="0 0 1540 850" role="img" aria-labelledby="title desc">
+  <title id="title">Admin review queue desktop and mobile design preview</title>
+  <desc id="desc">MFA-gated application queue. Applicant rows use neutral placeholders and contain no fabricated personal data.</desc>
+  <rect width="1540" height="850" fill="#EEECE5"/>
+  <text x="24" y="34" fill="#5E6259" font-family="Arial,sans-serif" font-size="14" font-weight="700" letter-spacing="2">04 / ADMIN REVIEW QUEUE — DESKTOP 1080 × MOBILE 388</text>
+  <rect x="22" y="52" width="1080" height="770" rx="18" fill="#F7F5EF"/>
+  <rect x="22" y="52" width="1080" height="36" rx="18" fill="#E9E6DC"/>
+  <circle cx="45" cy="70" r="5" fill="#B5B1A6"/><circle cx="63" cy="70" r="5" fill="#B5B1A6"/><circle cx="81" cy="70" r="5" fill="#B5B1A6"/>
+  <rect x="205" y="88" width="897" height="734" fill="#FAF9F5"/>
+  <rect x="22" y="88" width="183" height="734" fill="#FFFFFF"/>
+  <rect x="42" y="108" width="34" height="34" rx="10" fill="#E5EBDD"/>
+  <path d="M50 134 68 116M52 125h14M57 131h10" stroke="#2F5D46" stroke-width="2"/>
+  <text x="86" y="132" fill="#2B211B" font-family="Georgia,serif" font-size="19" font-weight="700">ZaminFlow</text>
+  <text x="44" y="184" fill="#5E6259" font-family="Arial,sans-serif" font-size="10" font-weight="700" letter-spacing="1">OPERATIONS</text>
+  <rect x="34" y="198" width="158" height="40" rx="10" fill="#EEF2EA"/>
+  <circle cx="55" cy="218" r="6" fill="#2F5D46"/><text x="73" y="222" fill="#2F5D46" font-family="Arial,sans-serif" font-size="12" font-weight="700">Applications</text>
+  <text x="73" y="267" fill="#5E6259" font-family="Arial,sans-serif" font-size="12">Security</text>
+  <text x="73" y="310" fill="#5E6259" font-family="Arial,sans-serif" font-size="12">Audit log</text>
+  <text x="73" y="353" fill="#5E6259" font-family="Arial,sans-serif" font-size="12">Security</text>
+  <rect x="44" y="761" width="140" height="41" rx="10" fill="#F4F2EC"/>
+  <circle cx="63" cy="781" r="12" fill="#E8EEF1"/><text x="59" y="785" fill="#315B76" font-family="Arial,sans-serif" font-size="10" font-weight="700">A</text>
+  <text x="82" y="785" fill="#2B211B" font-family="Arial,sans-serif" font-size="10" font-weight="700">MFA enabled</text>
+  <rect x="205" y="88" width="897" height="62" fill="#FFFFFF"/>
+  <path d="M205 150H1102" stroke="#E3DED2"/>
+  <text x="232" y="126" fill="#2B211B" font-family="Arial,sans-serif" font-size="13" font-weight="700">Administrator workspace</text>
+  <rect x="232" y="180" width="20" height="20" rx="5" fill="#EEF2EA"/><path d="m237 190 4 4 7-8" fill="none" stroke="#2F5D46" stroke-width="2"/>
+  <text x="263" y="195" fill="#2F5D46" font-family="Arial,sans-serif" font-size="11" font-weight="700">SECURE REVIEW QUEUE</text>
+  <text x="232" y="239" fill="#2B211B" font-family="Georgia,serif" font-size="30" font-weight="700">Applications</text>
+  <text x="232" y="265" fill="#5E6259" font-family="Arial,sans-serif" font-size="13">Review verified farmer and processor accounts.</text>
+  <rect x="900" y="202" width="164" height="40" rx="10" fill="#FFFFFF" stroke="#D9D5C9"/>
+  <text x="919" y="227" fill="#2B211B" font-family="Arial,sans-serif" font-size="12">Role: all  ▾</text>
+  <rect x="232" y="289" width="832" height="58" rx="12" fill="#FFFFFF" stroke="#E3DED2"/>
+  <circle cx="259" cy="318" r="10" fill="#F4EBDD"/><text x="280" y="315" fill="#2B211B" font-family="Arial,sans-serif" font-size="12" font-weight="700">Longest waiting</text>
+  <text x="280" y="333" fill="#5E6259" font-family="Arial,sans-serif" font-size="11">Start with the oldest verified application.</text>
+  <rect x="232" y="366" width="832" height="393" rx="14" fill="#FFFFFF" stroke="#E3DED2"/>
+  <rect x="232" y="366" width="832" height="48" rx="14" fill="#F4F2EC"/>
+  <text x="254" y="396" fill="#5E6259" font-family="Arial,sans-serif" font-size="10" font-weight="700">APPLICANT</text>
+  <text x="462" y="396" fill="#5E6259" font-family="Arial,sans-serif" font-size="10" font-weight="700">ROLE</text>
+  <text x="586" y="396" fill="#5E6259" font-family="Arial,sans-serif" font-size="10" font-weight="700">REGION</text>
+  <text x="725" y="396" fill="#5E6259" font-family="Arial,sans-serif" font-size="10" font-weight="700">VERIFIED</text>
+  <text x="842" y="396" fill="#5E6259" font-family="Arial,sans-serif" font-size="10" font-weight="700">SUBMITTED</text>
+  <text x="985" y="396" fill="#5E6259" font-family="Arial,sans-serif" font-size="10" font-weight="700">ACTION</text>
+  <path d="M232 414H1064" stroke="#E3DED2"/>
+  <circle cx="260" cy="455" r="15" fill="#EAEDE4"/>
+  <rect x="285" y="445" width="112" height="9" rx="4" fill="#E9E6DC"/><rect x="285" y="461" width="88" height="7" rx="3" fill="#F0EEE8"/>
+  <rect x="460" y="446" width="69" height="22" rx="11" fill="#EEF2EA"/><text x="473" y="461" fill="#2F5D46" font-family="Arial,sans-serif" font-size="9">Farmer</text>
+  <rect x="586" y="451" width="82" height="8" rx="4" fill="#E9E6DC"/>
+  <circle cx="744" cy="455" r="9" fill="#E6EBE1"/><path d="m740 455 3 3 5-6" fill="none" stroke="#2F5D46" stroke-width="1.5"/>
+  <rect x="842" y="451" width="71" height="8" rx="4" fill="#E9E6DC"/>
+  <rect x="971" y="438" width="78" height="32" rx="16" fill="#2F5D46"/><text x="985" y="458" fill="#FFFFFF" font-family="Arial,sans-serif" font-size="10" font-weight="700">Review →</text>
+  <path d="M232 492H1064" stroke="#EEECE5"/>
+  <circle cx="260" cy="531" r="15" fill="#EAEDE4"/>
+  <rect x="285" y="521" width="112" height="9" rx="4" fill="#E9E6DC"/><rect x="285" y="537" width="88" height="7" rx="3" fill="#F0EEE8"/>
+  <rect x="460" y="522" width="82" height="22" rx="11" fill="#E8EEF1"/><text x="470" y="537" fill="#315B76" font-family="Arial,sans-serif" font-size="9">Processor</text>
+  <rect x="586" y="527" width="82" height="8" rx="4" fill="#E9E6DC"/>
+  <circle cx="744" cy="531" r="9" fill="#E6EBE1"/><path d="m740 531 3 3 5-6" fill="none" stroke="#2F5D46" stroke-width="1.5"/>
+  <rect x="842" y="527" width="71" height="8" rx="4" fill="#E9E6DC"/>
+  <rect x="971" y="514" width="78" height="32" rx="16" fill="#2F5D46"/><text x="985" y="534" fill="#FFFFFF" font-family="Arial,sans-serif" font-size="10" font-weight="700">Review →</text>
+  <path d="M232 568H1064" stroke="#EEECE5"/>
+  <circle cx="260" cy="607" r="15" fill="#EAEDE4"/>
+  <rect x="285" y="597" width="112" height="9" rx="4" fill="#E9E6DC"/><rect x="285" y="613" width="88" height="7" rx="3" fill="#F0EEE8"/>
+  <rect x="460" y="598" width="69" height="22" rx="11" fill="#EEF2EA"/><text x="473" y="613" fill="#2F5D46" font-family="Arial,sans-serif" font-size="9">Farmer</text>
+  <rect x="586" y="603" width="82" height="8" rx="4" fill="#E9E6DC"/>
+  <circle cx="744" cy="607" r="9" fill="#E6EBE1"/><path d="m740 607 3 3 5-6" fill="none" stroke="#2F5D46" stroke-width="1.5"/>
+  <rect x="842" y="603" width="71" height="8" rx="4" fill="#E9E6DC"/>
+  <rect x="971" y="590" width="78" height="32" rx="16" fill="#2F5D46"/><text x="985" y="610" fill="#FFFFFF" font-family="Arial,sans-serif" font-size="10" font-weight="700">Review →</text>
+  <path d="M232 644H1064" stroke="#EEECE5"/>
+  <text x="254" y="700" fill="#5E6259" font-family="Arial,sans-serif" font-size="11">Applicant details are revealed only after opening a record.</text>
+  <rect x="1130" y="52" width="388" height="770" rx="24" fill="#F7F5EF" stroke="#D9D5C9"/>
+  <rect x="1130" y="52" width="388" height="36" rx="20" fill="#E9E6DC"/>
+  <circle cx="1152" cy="70" r="4" fill="#B5B1A6"/><circle cx="1167" cy="70" r="4" fill="#B5B1A6"/><circle cx="1182" cy="70" r="4" fill="#B5B1A6"/>
+  <rect x="1150" y="104" width="31" height="31" rx="9" fill="#E5EBDD"/>
+  <path d="M1157 129 1174 112M1158 121h13M1162 126h9" stroke="#2F5D46" stroke-width="2"/>
+  <text x="1190" y="127" fill="#2B211B" font-family="Georgia,serif" font-size="19" font-weight="700">ZaminFlow</text>
+  <circle cx="1481" cy="119" r="15" fill="#E8EEF1"/><text x="1477" y="123" fill="#315B76" font-family="Arial,sans-serif" font-size="10" font-weight="700">A</text>
+  <text x="1150" y="176" fill="#2F5D46" font-family="Arial,sans-serif" font-size="10" font-weight="700">SECURE REVIEW QUEUE</text>
+  <text x="1150" y="212" fill="#2B211B" font-family="Georgia,serif" font-size="27" font-weight="700">Applications</text>
+  <text x="1150" y="236" fill="#5E6259" font-family="Arial,sans-serif" font-size="11">Verified accounts awaiting review.</text>
+  <rect x="1150" y="253" width="348" height="40" rx="9" fill="#FFFFFF" stroke="#D9D5C9"/>
+  <text x="1165" y="278" fill="#2B211B" font-family="Arial,sans-serif" font-size="11">Role: all  ▾</text>
+  <rect x="1150" y="306" width="348" height="64" rx="12" fill="#F4EBDD"/>
+  <circle cx="1172" cy="338" r="10" fill="#87520F"/><text x="1169" y="342" fill="#FFFFFF" font-family="Arial,sans-serif" font-size="10" font-weight="700">!</text>
+  <text x="1191" y="333" fill="#2B211B" font-family="Arial,sans-serif" font-size="11" font-weight="700">Oldest verified application</text>
+  <text x="1191" y="352" fill="#5E6259" font-family="Arial,sans-serif" font-size="10">Review age is based on server timestamps.</text>
+  <rect x="1150" y="383" width="348" height="331" rx="12" fill="#FFFFFF" stroke="#E3DED2"/>
+  <text x="1167" y="410" fill="#5E6259" font-family="Arial,sans-serif" font-size="9" font-weight="700">PENDING APPLICANTS</text>
+  <path d="M1150 424H1498" stroke="#E3DED2"/>
+  <rect x="1167" y="443" width="42" height="42" rx="14" fill="#EAEDE4"/>
+  <rect x="1221" y="449" width="132" height="9" rx="4" fill="#E9E6DC"/>
+  <rect x="1221" y="467" width="88" height="7" rx="3" fill="#F0EEE8"/>
+  <rect x="1371" y="445" width="94" height="24" rx="12" fill="#EEF2EA"/><text x="1391" y="461" fill="#2F5D46" font-family="Arial,sans-serif" font-size="9">Farmer</text>
+  <rect x="1167" y="495" width="314" height="39" rx="19" fill="#2F5D46"/><text x="1283" y="519" fill="#FFFFFF" font-family="Arial,sans-serif" font-size="12" font-weight="700">Review application  →</text>
+  <path d="M1167 552H1481" stroke="#EEECE5"/>
+  <rect x="1167" y="571" width="42" height="42" rx="14" fill="#EAEDE4"/>
+  <rect x="1221" y="577" width="132" height="9" rx="4" fill="#E9E6DC"/>
+  <rect x="1221" y="595" width="88" height="7" rx="3" fill="#F0EEE8"/>
+  <rect x="1371" y="573" width="94" height="24" rx="12" fill="#E8EEF1"/><text x="1380" y="589" fill="#315B76" font-family="Arial,sans-serif" font-size="9">Processor</text>
+  <rect x="1167" y="629" width="314" height="39" rx="19" fill="#FFFFFF" stroke="#D9D5C9"/><text x="1283" y="653" fill="#2B211B" font-family="Arial,sans-serif" font-size="12" font-weight="700">Review application  →</text>
+  <rect x="1148" y="748" width="352" height="52" rx="16" fill="#FFFFFF" stroke="#E3DED2"/>
+  <circle cx="1191" cy="769" r="7" fill="#2F5D46"/><text x="1171" y="790" fill="#2F5D46" font-family="Arial,sans-serif" font-size="9">Queue</text>
+  <circle cx="1274" cy="769" r="7" fill="#C5C1B5"/><text x="1253" y="790" fill="#5E6259" font-family="Arial,sans-serif" font-size="9">Security</text>
+  <circle cx="1361" cy="769" r="7" fill="#C5C1B5"/><text x="1346" y="790" fill="#5E6259" font-family="Arial,sans-serif" font-size="9">Audit</text>
+  <circle cx="1450" cy="769" r="7" fill="#C5C1B5"/><text x="1438" y="790" fill="#5E6259" font-family="Arial,sans-serif" font-size="9">Me</text>
+</svg>

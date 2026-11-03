@@ -1,0 +1,53 @@
+name: zaminflow-web-prod
+
+services:
+  web:
+    build:
+      context: .
+      dockerfile: Dockerfile
+      args:
+        API_BASE_URL: ${API_BASE_URL:-https://api.zaminflow.uz/api/v1}
+    environment:
+      NODE_ENV: production
+      API_BASE_URL: ${API_BASE_URL:-https://api.zaminflow.uz/api/v1}
+      PORT: 3000
+      HOSTNAME: 0.0.0.0
+    restart: always
+    deploy:
+      resources:
+        limits:
+          cpus: "1.5"
+          memory: 1G
+    healthcheck:
+      test: ["CMD", "wget", "-q", "--spider", "http://127.0.0.1:3000/uz"]
+      interval: 15s
+      timeout: 5s
+      retries: 3
+    networks:
+      - edge
+
+  caddy:
+    image: caddy:2.9.1-alpine
+    restart: always
+    ports:
+      - "80:80"
+      - "443:443"
+    environment:
+      WEB_DOMAIN: ${WEB_DOMAIN:-www.zaminflow.uz}
+    volumes:
+      - ./deploy/Caddyfile:/etc/caddy/Caddyfile:ro
+      - caddy_data:/data
+      - caddy_config:/config
+    depends_on:
+      web:
+        condition: service_healthy
+    networks:
+      - edge
+
+networks:
+  edge:
+    name: zaminflow-edge
+
+volumes:
+  caddy_data:
+  caddy_config:

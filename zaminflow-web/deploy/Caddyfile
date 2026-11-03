@@ -1,0 +1,12 @@
+zaminflow.uz {
+	redir https://www.zaminflow.uz{uri} permanent
+}
+
+{$WEB_DOMAIN:www.zaminflow.uz} {
+	encode zstd gzip
+
+	reverse_proxy web:3000 {
+		header_up X-Forwarded-Host {host}
+		header_up X-Real-IP {remote_host}
+	}
+}
